@@ -10,7 +10,7 @@ use shua_struct_macro::binary_struct;
 pub struct Key {
     pub name: PhiString,
     pub length: u8,
-    pub ktype: [BitBool; 8],
+    pub ktype: [BitBool; 5],
     #[binary_field(func = get_flag_len)]
     pub flag: Vec<bool>,
 }
@@ -48,7 +48,7 @@ fn get_key_len(name: &str, ctx: &Ctx) -> u64 {
 #[binary_struct]
 pub struct GameKey {
     pub key_list: KeyList,
-    pub lanota_read_keys: [BitBool; 8],
+    pub lanota_read_keys: [BitBool; 6],
     pub camellia_read_key: [BitBool; 8],
     pub side_story4_begin_read_key: bool,
     pub old_score_cleared_v390: bool,

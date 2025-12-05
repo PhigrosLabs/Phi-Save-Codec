@@ -123,6 +123,10 @@ where
             arr[i] = v;
         }
 
+        if offset < 8 {
+            offset = 8;
+        }
+
         Ok((arr, offset))
     }
 
@@ -131,6 +135,12 @@ where
         for item in self.iter() {
             bv.extend(item.build());
         }
+
+        let remainder = bv.len() % 8;
+        if remainder != 0 {
+            bv.resize(bv.len() + (8 - remainder), false);
+        }
+
         bv
     }
 }
