@@ -1,12 +1,7 @@
-use std::any::Any;
-use std::collections::HashMap;
-
 use bitvec::prelude::*;
-use shua_struct::field::{BinaryField, GetLen};
+use shua_struct::field::{BinaryField, GetLen, Ctx};
 
-pub type Ctx = HashMap<String, Box<dyn Any>>;
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct VarInt(pub u16);
 
 impl BinaryField for VarInt {
