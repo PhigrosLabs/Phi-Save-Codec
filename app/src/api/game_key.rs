@@ -108,6 +108,6 @@ pub extern "C" fn build_game_key(data_ptr: *const u8, data_len: usize) -> Data {
         Ok(v) => v,
         Err(_) => return empty_data(),
     };
-    
+
     unsafe { malloc_data(bitvec.into_vec()) }
 }

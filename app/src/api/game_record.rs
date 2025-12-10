@@ -120,6 +120,5 @@ pub unsafe extern "C" fn build_game_record(data_ptr: *const u8, data_len: usize)
             return empty_data();
         }
     };
-    let bytes = bitvec.into_vec();
-    unsafe { malloc_data(bytes) }
+    unsafe { malloc_data(bitvec.into_vec()) }
 }

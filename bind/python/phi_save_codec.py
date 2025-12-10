@@ -3,7 +3,7 @@ from typing import Any
 from wasmtime import Store, Module, Instance
 import ctypes
 
-FUNCS = ["game_key", "game_record"]
+FUNCS = ["game_key", "game_record", "user"]
         
 class PhiSaveCodec:
     def __init__(self, wasm_path: str = "phi_save_codec.wasm",funcs:list[str] | None = None):
@@ -81,3 +81,7 @@ class PhiSaveCodec:
     def build_game_record(data_dict: dict[str, Any]) -> bytes: ...
     
     def parse_game_record(data: bytes)-> dict[str, Any]: ...
+    
+    def build_user(data_dict: dict[str, Any]) -> bytes: ...
+    
+    def parse_user(data: bytes)-> dict[str, Any]: ...
