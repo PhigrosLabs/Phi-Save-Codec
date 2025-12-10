@@ -9,7 +9,16 @@ pub struct Data {
     pub ptr: *mut u8,
 }
 
-pub unsafe fn malloc_bytes(mut bytes: Vec<u8>) -> Data {
+#[inline(always)]
+fn empty_data() -> Data {
+    Data {
+        len: 0,
+        ptr: std::ptr::null_mut(),
+    }
+}
+
+#[inline(always)]
+pub unsafe fn malloc_data(mut bytes: Vec<u8>) -> Data {
     bytes.shrink_to_fit();
     let len = bytes.len();
     let ptr = bytes.as_mut_ptr();

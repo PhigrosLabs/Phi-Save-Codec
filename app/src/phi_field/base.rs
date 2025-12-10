@@ -1,16 +1,11 @@
 use bitvec::prelude::*;
-use shua_struct::field::{BinaryField, Ctx, GetLen};
+use shua_struct::field::{BinaryField, Options};
 
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct VarInt(pub u16);
 
 impl BinaryField for VarInt {
-    fn parse(
-        bits: &BitSlice<u8, Lsb0>,
-        _ctx: &mut Ctx,
-        _name: Option<&str>,
-        _get_len: Option<GetLen>,
-    ) -> Result<(Self, usize), String> {
+    fn parse(bits: &BitSlice<u8, Lsb0>, _opts: &Option<Options>) -> Result<(Self, usize), String> {
         if bits.len() < 8 {
             return Err("VarInt parse error: not enough bits".to_string());
         }
@@ -32,7 +27,7 @@ impl BinaryField for VarInt {
         }
     }
 
-    fn build(&self) -> BitVec<u8, Lsb0> {
+    fn build(&self, _opts: &Option<Options>) -> Result<BitVec<u8>, String> {
         let mut bv = BitVec::new();
 
         if self.0 > 127 {
@@ -44,20 +39,21 @@ impl BinaryField for VarInt {
             bv.extend_from_raw_slice(&[self.0 as u8]);
         }
 
-        bv
+        Ok(bv)
     }
 }
 
-#[derive(Clone, Debug, Default)]
+impl From<VarInt> for usize {
+    fn from(var: VarInt) -> Self {
+        var.0 as usize
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct PhiString(pub String);
 impl BinaryField for PhiString {
-    fn parse(
-        bits: &BitSlice<u8, Lsb0>,
-        ctx: &mut Ctx,
-        name: Option<&str>,
-        get_len: Option<GetLen>,
-    ) -> Result<(Self, usize), String> {
-        let (varint, offset_bits) = VarInt::parse(bits, ctx, name, get_len)?;
+    fn parse(bits: &BitSlice<u8, Lsb0>, opts: &Option<Options>) -> Result<(Self, usize), String> {
+        let (varint, offset_bits) = VarInt::parse(bits, opts)?;
         let length_bytes = varint.0 as usize;
         let length_bits = length_bytes
             .checked_mul(8)
@@ -80,34 +76,11 @@ impl BinaryField for PhiString {
         Ok((PhiString(s.to_string()), offset_bits + length_bits))
     }
 
-    fn build(&self) -> BitVec<u8, Lsb0> {
+    fn build(&self, opts: &Option<Options>) -> Result<BitVec<u8>, String> {
         let bytes = self.0.as_bytes();
-        let mut bv = VarInt(bytes.len() as u16).build();
+        let mut bv = VarInt(bytes.len() as u16).build(opts)?;
         bv.extend_from_raw_slice(bytes);
-        bv
-    }
-}
-
-#[derive(Clone, Debug, Default, Copy)]
-pub struct BitBool(pub bool);
-
-impl BinaryField for BitBool {
-    fn parse(
-        bits: &BitSlice<u8, Lsb0>,
-        _ctx: &mut Ctx,
-        _name: Option<&str>,
-        _get_len: Option<GetLen>,
-    ) -> Result<(Self, usize), String> {
-        if bits.len() < 1 {
-            return Err("BitBool parse error: not enough bits".to_string());
-        }
-        Ok((BitBool(bits[0]), 1))
-    }
-
-    fn build(&self) -> BitVec<u8, Lsb0> {
-        let mut bv = BitVec::<u8, Lsb0>::new();
-        bv.push(self.0);
-        bv
+        Ok(bv)
     }
 }
 
@@ -139,16 +112,5 @@ impl From<u16> for VarInt {
 impl From<VarInt> for u16 {
     fn from(varint: VarInt) -> Self {
         varint.0
-    }
-}
-impl From<bool> for BitBool {
-    fn from(b: bool) -> Self {
-        BitBool(b)
-    }
-}
-
-impl From<BitBool> for bool {
-    fn from(bb: BitBool) -> Self {
-        bb.0
     }
 }

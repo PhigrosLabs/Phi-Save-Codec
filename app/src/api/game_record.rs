@@ -1,4 +1,4 @@
-use crate::api::{Data, malloc_bytes};
+use crate::api::{Data, malloc_data, empty_data};
 use crate::phi_field::base::*;
 use crate::phi_field::game_record::{GameRecord, LevelRecord, SongEntry};
 use bitvec::prelude::*;
@@ -24,14 +24,14 @@ impl From<GameRecord> for SerializableGameRecord {
             let mut song_map: HashMap<String, SerializableLevelRecord> = HashMap::new();
             let mut level_idx = 0;
             for i in 0..5 {
-                if song.unlock[i].0 {
+                if song.unlock[i] {
                     let level = &song.levels[level_idx];
                     song_map.insert(
                         DIFF_ORDER[i].to_string(),
                         SerializableLevelRecord {
                             score: level.score,
                             acc: level.acc,
-                            fc: song.fc[i].0,
+                            fc: song.fc[i],
                         },
                     );
                     level_idx += 1;
@@ -46,13 +46,13 @@ impl From<SerializableGameRecord> for GameRecord {
     fn from(sgr: SerializableGameRecord) -> Self {
         let mut song_list: Vec<SongEntry> = Vec::new();
         for (name, song_map) in sgr.0 {
-            let mut unlock = [BitBool(false); 5];
-            let mut fc = [BitBool(false); 5];
+            let mut unlock = [false; 5];
+            let mut fc = [false; 5];
             let mut levels: Vec<LevelRecord> = Vec::new();
             for (i, diff) in DIFF_ORDER.iter().enumerate() {
                 if let Some(rec) = song_map.get(*diff) {
-                    unlock[i] = BitBool(true);
-                    fc[i] = BitBool(rec.fc);
+                    unlock[i] = true;
+                    fc[i] = rec.fc;
                     levels.push(LevelRecord {
                         score: rec.score,
                         acc: rec.acc,
@@ -77,23 +77,16 @@ impl From<SerializableGameRecord> for GameRecord {
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn parse_game_record(data_ptr: *const u8, data_len: usize) -> Data {
     if data_ptr.is_null() || data_len == 0 {
-        return Data {
-            len: 0,
-            ptr: std::ptr::null_mut(),
-        };
+        return empty_data();
     }
 
     let bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
 
     let bits = BitSlice::<u8, Lsb0>::from_slice(&bytes);
-    let mut ctx = HashMap::new();
-    let (game_record, _) = match GameRecord::parse(bits, &mut ctx, None, None) {
+    let (game_record, _) = match GameRecord::parse(bits, &None) {
         Ok(r) => r,
         Err(_) => {
-            return Data {
-                len: 0,
-                ptr: std::ptr::null_mut(),
-            };
+            return empty_data();
         }
     };
 
@@ -101,23 +94,17 @@ pub unsafe extern "C" fn parse_game_record(data_ptr: *const u8, data_len: usize)
     let json = match serde_json::to_vec(&serializable) {
         Ok(bytes) => bytes,
         Err(_) => {
-            return Data {
-                len: 0,
-                ptr: std::ptr::null_mut(),
-            };
+            return empty_data();
         }
     };
 
-    unsafe { malloc_bytes(json) }
+    unsafe { malloc_data(json) }
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn build_game_record(data_ptr: *const u8, data_len: usize) -> Data {
     if data_ptr.is_null() || data_len == 0 {
-        return Data {
-            len: 0,
-            ptr: std::ptr::null_mut(),
-        };
+        return empty_data()
     }
 
     let json_bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
@@ -125,16 +112,18 @@ pub unsafe extern "C" fn build_game_record(data_ptr: *const u8, data_len: usize)
     let serializable: SerializableGameRecord = match serde_json::from_slice(json_bytes) {
         Ok(v) => v,
         Err(_) => {
-            return Data {
-                len: 0,
-                ptr: std::ptr::null_mut(),
-            };
+            return empty_data();
         }
     };
 
     let game_record: GameRecord = GameRecord::from(serializable);
-    let bitvec = game_record.build();
+    let bitvec = match game_record.build(&None) {
+        Ok(v) => v,
+        Err(_) => {
+            return empty_data();
+        }
+    };
     let bytes = bitvec.into_vec();
 
-    unsafe { malloc_bytes(bytes) }
+    unsafe { malloc_data(bytes) }
 }

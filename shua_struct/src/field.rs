@@ -1,20 +1,30 @@
-use std::any::Any;
-use std::collections::HashMap;
+use std::cell::Cell;
 
 use bitvec::prelude::*;
 
-pub type Ctx = HashMap<String, Box<dyn Any>>;
-pub type GetLen = fn(name: &str, ctx: &Ctx) -> u64;
+#[derive(Debug, Default)]
+pub struct Options {
+    pub name: String,
+    pub size: usize,
+    pub align: usize,
+    pub sub_align: Cell<u8>,
+}
 
+impl Options {
+    pub fn get_align(&self) -> Option<usize> {
+        let n = self.sub_align.get();
+        if n == 0 {
+            return None;
+        }
+        let new = n - 1;
+        self.sub_align.set(new);
+        if new == 0 { Some(self.align) } else { None }
+    }
+}
 pub trait BinaryField: Sized {
-    fn parse(
-        bits: &BitSlice<u8, Lsb0>,
-        ctx: &mut Ctx,
-        name: Option<&str>,
-        get_len: Option<GetLen>,
-    ) -> Result<(Self, usize), String>;
+    fn parse(bits: &BitSlice<u8, Lsb0>, opts: &Option<Options>) -> Result<(Self, usize), String>;
 
-    fn build(&self) -> BitVec<u8, Lsb0>;
+    fn build(&self, opts: &Option<Options>) -> Result<BitVec<u8, Lsb0>, String>;
 }
 
 macro_rules! impl_bit_primitive {
@@ -22,9 +32,7 @@ macro_rules! impl_bit_primitive {
         impl BinaryField for $t {
             fn parse(
                 bits: &BitSlice<u8, Lsb0>,
-                _ctx: &mut Ctx,
-                _name: Option<&str>,
-                _get_len: Option<GetLen>,
+                _opts: &Option<Options>,
             ) -> Result<(Self, usize), String> {
                 if bits.len() < $size_bits {
                     return Err(format!(
@@ -38,12 +46,12 @@ macro_rules! impl_bit_primitive {
                 Ok((value, $size_bits))
             }
 
-            fn build(&self) -> BitVec<u8, Lsb0> {
+            fn build(&self, _opts: &Option<Options>) -> Result<BitVec<u8, Lsb0>, String> {
                 let mut bv = BitVec::<u8, Lsb0>::new();
                 let bytes = self.to_le_bytes();
                 bv.extend_from_raw_slice(&bytes);
                 bv.truncate($size_bits);
-                bv
+                Ok(bv)
             }
         }
     };
@@ -54,12 +62,7 @@ impl_bit_primitive!(u16, 16);
 impl_bit_primitive!(u32, 32);
 
 impl BinaryField for f32 {
-    fn parse(
-        bits: &BitSlice<u8, Lsb0>,
-        _ctx: &mut Ctx,
-        _name: Option<&str>,
-        _get_len: Option<GetLen>,
-    ) -> Result<(Self, usize), String> {
+    fn parse(bits: &BitSlice<u8, Lsb0>, _opts: &Option<Options>) -> Result<(Self, usize), String> {
         const SIZE_BITS: usize = 32;
         if bits.len() < SIZE_BITS {
             return Err(format!(
@@ -71,36 +74,27 @@ impl BinaryField for f32 {
         Ok((f32::from_bits(raw_bits), SIZE_BITS))
     }
 
-    fn build(&self) -> BitVec<u8, Lsb0> {
+    fn build(&self, _opts: &Option<Options>) -> Result<BitVec<u8, Lsb0>, String> {
         let mut bv = BitVec::<u8, Lsb0>::new();
         let bytes = self.to_bits().to_le_bytes();
         bv.extend_from_raw_slice(&bytes);
         bv.truncate(32);
-        bv
+        Ok(bv)
     }
 }
 
 impl BinaryField for bool {
-    fn parse(
-        bits: &BitSlice<u8, Lsb0>,
-        _ctx: &mut Ctx,
-        _name: Option<&str>,
-        _get_len: Option<GetLen>,
-    ) -> Result<(Self, usize), String> {
-        if bits.len() < 8 {
+    fn parse(bits: &BitSlice<u8, Lsb0>, _opts: &Option<Options>) -> Result<(Self, usize), String> {
+        if bits.len() < 1 {
             return Err("bool parse error: not enough bits".to_string());
         }
-        let value = bits[0];
-        Ok((value, 8))
+        Ok((bits[0], 1))
     }
 
-    fn build(&self) -> BitVec<u8, Lsb0> {
-        let mut bv = BitVec::<u8, Lsb0>::with_capacity(8);
+    fn build(&self, _opts: &Option<Options>) -> Result<BitVec<u8>, String> {
+        let mut bv = BitVec::<u8, Lsb0>::new();
         bv.push(*self);
-        for _ in 1..8 {
-            bv.push(false);
-        }
-        bv
+        Ok(bv)
     }
 }
 
@@ -110,39 +104,53 @@ where
 {
     fn parse(
         bits: &BitSlice<u8, Lsb0>,
-        ctx: &mut Ctx,
-        name: Option<&str>,
-        get_len: Option<GetLen>,
+        raw_opts: &Option<Options>,
     ) -> Result<(Self, usize), String> {
+        let align = raw_opts
+            .as_ref()
+            .ok_or("[T; N] parse error: missing opts")?
+            .get_align();
         let mut offset = 0;
         let mut arr: [T; N] = [T::default(); N];
 
         for i in 0..N {
-            let (v, l) = T::parse(&bits[offset..], ctx, name, get_len)?;
+            let (v, l) = T::parse(&bits[offset..], raw_opts)?;
             offset += l;
+            match align {
+                Some(align) => {
+                    let remainder = offset % align;
+                    if remainder != 0 {
+                        offset += align - remainder;
+                    }
+                }
+                None => {}
+            }
             arr[i] = v;
         }
-
-        let remainder = offset % 8;
-        if remainder != 0 {
-            offset += 8 - remainder;
-        }
-
+        
         Ok((arr, offset))
     }
 
-    fn build(&self) -> BitVec<u8, Lsb0> {
+    fn build(&self, raw_opts: &Option<Options>) -> Result<BitVec<u8, Lsb0>, String> {
+        let align = raw_opts
+            .as_ref()
+            .ok_or("Vec parse error: missing opts")?
+            .get_align();
         let mut bv = BitVec::new();
         for item in self.iter() {
-            bv.extend(item.build());
+            match align {
+                Some(align) => {
+                    let remainder = bv.len() % align;
+                    if remainder != 0 {
+                        bv.resize(bv.len() + (align - remainder), false);
+                    }
+                }
+                None => {}
+            }
+            let item_bv = item.build(raw_opts)?;
+            bv.extend(item_bv);
         }
-
-        let remainder = bv.len() % 8;
-        if remainder != 0 {
-            bv.resize(bv.len() + (8 - remainder), false);
-        }
-
-        bv
+        Ok(bv)
     }
 }
 
@@ -152,32 +160,51 @@ where
 {
     fn parse(
         bits: &BitSlice<u8, Lsb0>,
-        ctx: &mut Ctx,
-        name: Option<&str>,
-        get_len: Option<GetLen>,
+        raw_opts: &Option<Options>,
     ) -> Result<(Self, usize), String> {
-        let get_len_fn = get_len.ok_or("Vec parse error: missing get_len function")?;
-        let field_name = name.ok_or("Vec parse error: empty name")?;
+        let opts = raw_opts.as_ref().ok_or("Vec parse error: missing opts")?;
+        if opts.size == 0 {
+            return Err("Vec parse error: missing size".to_string());
+        }
+        let align = opts.get_align();
 
-        let len = get_len_fn(field_name, ctx) as usize;
-
-        let mut vec = Vec::with_capacity(len);
+        let mut vec = Vec::with_capacity(opts.size);
         let mut offset = 0;
 
-        for _ in 0..len {
-            let (item, l) = T::parse(&bits[offset..], ctx, None, get_len)?;
+        for _ in 0..opts.size {
+            let (item, l) = T::parse(&bits[offset..], raw_opts)?;
             offset += l;
+            match align {
+                Some(align) => {
+                    let remainder = offset % align;
+                    if remainder != 0 {
+                        offset += align - remainder;
+                    }
+                }
+                None => {}
+            }
             vec.push(item);
         }
-
         Ok((vec, offset))
     }
 
-    fn build(&self) -> BitVec<u8, Lsb0> {
+    fn build(&self, raw_opts: &Option<Options>) -> Result<BitVec<u8, Lsb0>, String> {
+        let opts = raw_opts.as_ref().ok_or("Vec parse error: missing opts")?;
+        let align = opts.get_align();
         let mut bv = BitVec::new();
         for item in self.iter() {
-            bv.extend(item.build());
+            let item_bv = item.build(raw_opts)?;
+            bv.extend(item_bv);
+            match align {
+                Some(align) => {
+                    let remainder = bv.len() % align;
+                    if remainder != 0 {
+                        bv.resize(bv.len() + (align - remainder), false);
+                    }
+                }
+                None => {}
+            }
         }
-        bv
+        Ok(bv)
     }
 }

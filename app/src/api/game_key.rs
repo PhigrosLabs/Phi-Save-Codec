@@ -1,9 +1,8 @@
-use crate::api::{Data, malloc_bytes};
+use crate::api::{Data, malloc_data, empty_data};
 use crate::phi_field::game_key::*;
 use bitvec::prelude::*;
 use serde::{Deserialize, Serialize};
 use shua_struct::field::BinaryField;
-use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize)]
 struct SerializableGameKey {
@@ -32,14 +31,14 @@ impl From<GameKey> for SerializableGameKey {
                 .into_iter()
                 .map(|k| SerializableKey {
                     name: k.name.0,
-                    ktype: k.ktype.into_iter().map(|b| b.0).collect(),
+                    ktype: k.ktype.into_iter().collect(),
                     flag: k.flag,
                 })
                 .collect(),
-            lanota_read_keys: gk.lanota_read_keys.into_iter().map(|b| b.0).collect(),
-            camellia_read_key: gk.camellia_read_key.into_iter().map(|b| b.0).collect(),
-            side_story4_begin_read_key: gk.side_story4_begin_read_key,
-            old_score_cleared_v390: gk.old_score_cleared_v390,
+            lanota_read_keys: gk.lanota_read_keys.into_iter().collect(),
+            camellia_read_key: gk.camellia_read_key.into_iter().collect(),
+            side_story4_begin_read_key: gk.side_story4_begin_read_key.into(),
+            old_score_cleared_v390: gk.old_score_cleared_v390.into(),
         }
     }
 }
@@ -55,13 +54,7 @@ impl From<SerializableGameKey> for GameKey {
                 Key {
                     name: PhiString(sk.name),
                     length,
-                    ktype: sk
-                        .ktype
-                        .into_iter()
-                        .map(BitBool::from)
-                        .collect::<Vec<_>>()
-                        .try_into()
-                        .unwrap(),
+                    ktype: sk.ktype.into_iter().collect::<Vec<_>>().try_into().unwrap(),
                     flag: sk.flag,
                 }
             })
@@ -75,19 +68,17 @@ impl From<SerializableGameKey> for GameKey {
             lanota_read_keys: sgk
                 .lanota_read_keys
                 .into_iter()
-                .map(BitBool::from)
                 .collect::<Vec<_>>()
                 .try_into()
                 .unwrap(),
             camellia_read_key: sgk
                 .camellia_read_key
                 .into_iter()
-                .map(BitBool::from)
                 .collect::<Vec<_>>()
                 .try_into()
                 .unwrap(),
-            side_story4_begin_read_key: sgk.side_story4_begin_read_key,
-            old_score_cleared_v390: sgk.old_score_cleared_v390,
+            side_story4_begin_read_key: sgk.side_story4_begin_read_key.into(),
+            old_score_cleared_v390: sgk.old_score_cleared_v390.into(),
         }
     }
 }
@@ -95,66 +86,42 @@ impl From<SerializableGameKey> for GameKey {
 #[unsafe(no_mangle)]
 pub extern "C" fn parse_game_key(data_ptr: *const u8, data_len: usize) -> Data {
     if data_ptr.is_null() || data_len == 0 {
-        return Data {
-            len: 0,
-            ptr: std::ptr::null_mut(),
-        };
+        return empty_data();
     }
 
     let bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
 
     let bits = BitSlice::<u8, Lsb0>::from_slice(bytes);
-    let mut ctx = HashMap::new();
 
-    let (game_key, _) = match GameKey::parse(&bits, &mut ctx, None, None) {
+    let (game_key, _) = match GameKey::parse(&bits, &None) {
         Ok(r) => r,
-        Err(_) => {
-            return Data {
-                len: 0,
-                ptr: std::ptr::null_mut(),
-            };
-        }
+        Err(_) => return empty_data(),
     };
 
-    let serializable = SerializableGameKey::from(game_key);
-
-    let json = match serde_json::to_vec(&serializable) {
-        Ok(bytes) => bytes,
-        Err(_) => {
-            return Data {
-                len: 0,
-                ptr: std::ptr::null_mut(),
-            };
-        }
+    let json = match serde_json::to_vec(&SerializableGameKey::from(game_key)) {
+        Ok(v) => v,
+        Err(_) => return empty_data(),
     };
 
-    unsafe { malloc_bytes(json) }
+    unsafe { malloc_data(json) }
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn build_game_key(data_ptr: *const u8, data_len: usize) -> Data {
     if data_ptr.is_null() || data_len == 0 {
-        return Data {
-            len: 0,
-            ptr: std::ptr::null_mut(),
-        };
+        return empty_data();
     }
 
-    let json_bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
+    let bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
 
-    let serializable: SerializableGameKey = match serde_json::from_slice(json_bytes) {
+    let serializable: SerializableGameKey = match serde_json::from_slice(bytes) {
         Ok(v) => v,
-        Err(_) => {
-            return Data {
-                len: 0,
-                ptr: std::ptr::null_mut(),
-            };
-        }
+        Err(_) => return empty_data(),
     };
 
-    let game_key: GameKey = GameKey::from(serializable);
-    let bitvec = game_key.build();
-    let bytes_vec = bitvec.into_vec();
-
-    unsafe { malloc_bytes(bytes_vec) }
+    let bitvec = match GameKey::from(serializable).build(&None) {
+        Ok(v) => v,
+        Err(_) => return empty_data(),
+    };
+    unsafe { malloc_data(bitvec.into_vec()) }
 }
