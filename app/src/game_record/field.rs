@@ -1,4 +1,4 @@
-pub(crate) use crate::phi_field::base::*;
+pub(crate) use crate::phi_base::*;
 use bitvec::prelude::*;
 use shua_struct::field::{BinaryField, Options};
 use shua_struct_macro::binary_struct;

@@ -1,4 +1,11 @@
 pub mod api;
-pub mod phi_field;
+pub mod phi_base;
+
+pub mod game_key;
+pub mod game_progress;
+pub mod game_record;
+pub mod summary;
+pub mod user;
+
 #[cfg(test)]
 mod test;

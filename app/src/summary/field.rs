@@ -1,4 +1,4 @@
-pub(crate) use crate::phi_field::base::*;
+pub(crate) use crate::phi_base::*;
 use bitvec::prelude::*;
 use shua_struct::field::{BinaryField, Options};
 use shua_struct_macro::binary_struct;
@@ -9,16 +9,16 @@ use std::cell::Cell;
 pub struct Level {
     pub clear: u16,
     pub fc: u16,
-    pub phi: u16
+    pub phi: u16,
 }
 
 #[derive(Debug, Default)]
 #[binary_struct]
 pub struct MultiLevel {
-    pub ez:Level,
-    pub hd:Level,
-    pub r#in:Level,
-    pub at:Level,
+    pub ez: Level,
+    pub hd: Level,
+    pub r#in: Level,
+    pub at: Level,
 }
 
 #[derive(Debug, Default)]
@@ -29,5 +29,5 @@ pub struct Summary {
     pub rks: f32,
     pub game_version: VarInt,
     pub avatar: PhiString,
-    pub level: MultiLevel
+    pub level: MultiLevel,
 }

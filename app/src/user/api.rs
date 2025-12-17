@@ -1,5 +1,5 @@
+use super::field::*;
 use crate::api::{Data, empty_data, malloc_data};
-use crate::phi_field::user::User;
 use bitvec::prelude::*;
 use serde::{Deserialize, Serialize};
 use shua_struct::field::BinaryField;

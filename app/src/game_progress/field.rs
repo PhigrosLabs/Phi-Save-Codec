@@ -1,4 +1,4 @@
-pub(crate) use crate::phi_field::base::*;
+use crate::phi_base::*;
 use bitvec::prelude::*;
 use shua_struct::field::{BinaryField, Options};
 use shua_struct_macro::binary_struct;
@@ -20,7 +20,7 @@ pub struct Money {
     pub mib: VarInt,
     pub gib: VarInt,
     pub tib: VarInt,
-    pub pib: VarInt
+    pub pib: VarInt,
 }
 
 #[derive(Debug, Default)]

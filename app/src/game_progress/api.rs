@@ -1,6 +1,6 @@
+use super::field::{Base, Chapter8Base, GameProgress, Money};
 use crate::api::{Data, empty_data, malloc_data};
-use crate::phi_field::base::*;
-use crate::phi_field::game_progress::{Base, Money, Chapter8Base, GameProgress};
+use crate::phi_base::*;
 use bitvec::prelude::*;
 use serde::{Deserialize, Serialize};
 use shua_struct::field::BinaryField;

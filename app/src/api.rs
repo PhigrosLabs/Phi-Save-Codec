@@ -1,9 +1,3 @@
-pub mod game_key;
-pub mod game_record;
-pub mod user;
-pub mod summary;
-pub mod game_progress;
-
 use std::alloc::{Layout, alloc, dealloc};
 
 #[repr(C)]
@@ -13,7 +7,7 @@ pub struct Data {
 }
 
 #[inline(always)]
-fn empty_data() -> Data {
+pub fn empty_data() -> Data {
     Data {
         len: 0,
         ptr: std::ptr::null_mut(),

@@ -1,9 +1,9 @@
-use multi_value_gen::parse;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
 use walrus::ValType;
+use multi_value_gen::parse;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let status = Command::new("cargo")
@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     }
 
-    let api_dir = "./app/src/api/";
+    let api_dir = "./app/src/";
     let mut funcs = HashMap::new();
 
     if Path::new(api_dir).exists() {
@@ -31,19 +31,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let entry = entry?;
             let path = entry.path();
 
-            if path.is_file() && path.extension().map_or(false, |ext| ext == "rs") {
-                if let Some(file_name) = path.file_stem() {
-                    let func_name = file_name.to_string_lossy().to_string();
-                    if func_name != "mod" {
-                        funcs.insert(
-                            format!("build_{}", func_name),
-                            vec![ValType::I32, ValType::I32],
-                        );
-                        funcs.insert(
-                            format!("parse_{}", func_name),
-                            vec![ValType::I32, ValType::I32],
-                        );
-                    }
+            // 只处理目录
+            if path.is_dir() {
+                if let Some(dir_name) = path.file_name() {
+                    let api_name = dir_name.to_string_lossy().to_string();
+                    funcs.insert(
+                        format!("build_{}", api_name),
+                        vec![ValType::I32, ValType::I32],
+                    );
+                    funcs.insert(
+                        format!("parse_{}", api_name),
+                        vec![ValType::I32, ValType::I32],
+                    );
                 }
             }
         }

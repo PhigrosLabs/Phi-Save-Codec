@@ -1,11 +1,9 @@
+use super::field::{Level, MultiLevel, Summary};
 use crate::api::{Data, empty_data, malloc_data};
-use crate::phi_field::base::*;
-use crate::phi_field::summary::{Summary, MultiLevel, Level};
+use crate::phi_base::*;
 use bitvec::prelude::*;
 use serde::{Deserialize, Serialize};
 use shua_struct::field::BinaryField;
-
-// ---------------- Serializable structs ----------------
 
 #[derive(Serialize, Deserialize)]
 struct SerializableLevel {

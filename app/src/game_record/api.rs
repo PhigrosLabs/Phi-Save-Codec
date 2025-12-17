@@ -1,6 +1,6 @@
+use super::field::{GameRecord, LevelRecord, SongEntry};
 use crate::api::{Data, empty_data, malloc_data};
-use crate::phi_field::base::*;
-use crate::phi_field::game_record::{GameRecord, LevelRecord, SongEntry};
+use crate::phi_base::*;
 use bitvec::prelude::*;
 use serde::{Deserialize, Serialize};
 use shua_struct::field::BinaryField;
