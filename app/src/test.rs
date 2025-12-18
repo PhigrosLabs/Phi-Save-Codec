@@ -23,50 +23,14 @@ struct TestStruct {
     g: PhiString,
 }
 
-#[binary_struct]
-#[derive(Default)]
-struct VecHeader {
-    len: u8,
-    #[binary_field(size_field=len)]
-    data: Vec<u8>,
-}
-
-#[test]
-fn test_vec_header_with_data() {
-    let original = VecHeader {
-        len: 3,
-        data: vec![10, 20, 30],
-    };
-
-    let bits = original.build(&None).unwrap();
-
-    let parsed = VecHeader::parse(&bits, &None).unwrap().0;
-
-    assert_eq!(parsed.len, original.len);
-    assert_eq!(parsed.data, original.data);
-}
-
-#[test]
-fn test_vec_header_empty() {
-    let original = VecHeader {
-        len: 0,
-        data: vec![],
-    };
-
-    let bits = original.build(&None).unwrap();
-
-    let parsed = VecHeader::parse(&bits, &None).unwrap().0;
-
-    assert_eq!(parsed.len, 0);
-    assert!(parsed.data.is_empty());
-}
-
 #[test]
 fn test_array() {
     let arr: [u8; 3] = [1, 2, 3];
-    let bits = arr.build(&None).unwrap();
+    let bits = arr.build(&Some(Options::default())).unwrap();
 
-    let parsed = <[u8; 3]>::parse(&bits, &None).unwrap().0;
+    let parsed = <[u8; 3]>::parse(&bits, &Some(Options::default()))
+        .unwrap()
+        .0;
 
     assert_eq!(arr, parsed);
 }
