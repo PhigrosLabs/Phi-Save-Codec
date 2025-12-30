@@ -1,4 +1,4 @@
-use super::field::{Base, Chapter8Base, GameProgress, Money};
+use super::field::{Chapter8Base, GameProgress, Money, ProgressBase};
 use crate::phi_base::*;
 use serde::{Deserialize, Serialize};
 
@@ -43,8 +43,8 @@ pub struct SerializableGameProgress {
     pub flag_of_song_record_key_takumi: [bool; 3],
 }
 
-impl From<Base> for SerializableBase {
-    fn from(b: Base) -> Self {
+impl From<ProgressBase> for SerializableBase {
+    fn from(b: ProgressBase) -> Self {
         Self {
             is_first_run: b.is_first_run,
             legacy_chapter_finished: b.legacy_chapter_finished,
@@ -54,9 +54,9 @@ impl From<Base> for SerializableBase {
     }
 }
 
-impl From<SerializableBase> for Base {
+impl From<SerializableBase> for ProgressBase {
     fn from(b: SerializableBase) -> Self {
-        Base {
+        ProgressBase {
             is_first_run: b.is_first_run,
             legacy_chapter_finished: b.legacy_chapter_finished,
             already_show_collection_tip: b.already_show_collection_tip,

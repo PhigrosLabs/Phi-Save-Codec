@@ -6,7 +6,7 @@ use std::cell::Cell;
 
 #[derive(Debug, Default)]
 #[binary_struct(bit_order = Lsb0)]
-pub struct Base {
+pub struct ProgressBase {
     pub is_first_run: bool,
     pub legacy_chapter_finished: bool,
     pub already_show_collection_tip: bool,
@@ -35,7 +35,7 @@ pub struct Chapter8Base {
 #[binary_struct(bit_order = Lsb0)]
 pub struct GameProgress {
     #[binary_field(align = 8)]
-    pub base: Base,
+    pub base: ProgressBase,
     pub completed: PhiString,
     pub song_update_info: VarInt,
     pub challenge_mode_rank: u16,

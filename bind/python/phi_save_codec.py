@@ -60,6 +60,9 @@ class PhiSaveCodec:
 
     parse_summary: Callable[[bytes], dict[str, Any]] = _WasmParser("summary")
     build_summary: Callable[[dict[str, Any]], bytes] = _WasmBuilder("summary")
+    
+    parse_settings: Callable[[bytes], dict[str, Any]] = _WasmParser("settings")
+    build_settings: Callable[[dict[str, Any]], bytes] = _WasmBuilder("settings")
 
     def __init__(self, wasm_path: str = "phi_save_codec.wasm"):
         self._store = Store()

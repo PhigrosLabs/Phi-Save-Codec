@@ -1,6 +1,7 @@
 use crate::game_key::{field::GameKey, serde::SerializableGameKey};
 use crate::game_progress::{field::GameProgress, serde::SerializableGameProgress};
 use crate::game_record::{field::GameRecord, serde::SerializableGameRecord};
+use crate::settings::{field::Settings, serde::SerializableSettings};
 use crate::summary::{field::Summary, serde::SerializableSummary};
 use crate::user::{field::User, serde::SerializableUser};
 use bitvec::prelude::*;
@@ -115,3 +116,9 @@ impl_c_api!(
     build_game_progress
 );
 impl_c_api!(GameKey, SerializableGameKey, parse_game_key, build_game_key);
+impl_c_api!(
+    Settings,
+    SerializableSettings,
+    parse_settings,
+    build_settings
+);
