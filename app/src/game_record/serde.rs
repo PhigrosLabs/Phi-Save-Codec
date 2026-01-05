@@ -5,14 +5,14 @@ use std::collections::BTreeMap;
 
 static DIFF_ORDER: [&str; 5] = ["EZ", "HD", "IN", "AT", "Legacy"];
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableLevelRecord {
     pub score: u32,
     pub acc: f32,
     pub fc: bool,
 }
 pub type SerializableSongRecord = BTreeMap<String, SerializableLevelRecord>;
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableGameRecord(BTreeMap<String, SerializableSongRecord>);
 
 impl From<GameRecord> for SerializableGameRecord {

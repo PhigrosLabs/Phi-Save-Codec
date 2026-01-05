@@ -1,11 +1,8 @@
 use crate::phi_base::*;
-use bitvec::prelude::*;
-use shua_struct::field::{BinaryField, Options};
-use shua_struct_macro::binary_struct;
-use std::cell::Cell;
+use shua_struct::BinaryStruct;
 
-#[derive(Debug, Default)]
-#[binary_struct(bit_order = Lsb0)]
+#[derive(Debug, Default, BinaryStruct)]
+#[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct ProgressBase {
     pub is_first_run: bool,
     pub legacy_chapter_finished: bool,
@@ -13,8 +10,8 @@ pub struct ProgressBase {
     pub already_show_auto_unlock_in_tip: bool,
 }
 
-#[derive(Debug, Default)]
-#[binary_struct(bit_order = Lsb0)]
+#[derive(Debug, Default, BinaryStruct)]
+#[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct Money {
     pub kib: VarInt,
     pub mib: VarInt,
@@ -23,16 +20,16 @@ pub struct Money {
     pub pib: VarInt,
 }
 
-#[derive(Debug, Default)]
-#[binary_struct(bit_order = Lsb0)]
+#[derive(Debug, Default, BinaryStruct)]
+#[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct Chapter8Base {
     pub unlock_begin: bool,
     pub unlock_second_phase: bool,
     pub passed: bool,
 }
 
-#[derive(Debug, Default)]
-#[binary_struct(bit_order = Lsb0)]
+#[derive(Debug, Default, BinaryStruct)]
+#[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct GameProgress {
     #[binary_field(align = 8)]
     pub base: ProgressBase,

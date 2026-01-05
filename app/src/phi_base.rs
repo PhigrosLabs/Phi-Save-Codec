@@ -1,5 +1,4 @@
-use bitvec::prelude::*;
-use shua_struct::field::{BinaryField, Options};
+use shua_struct::{BinaryField, BitField, BitSlice, BitVec, Lsb0, Options};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct VarInt(pub u16);

@@ -173,13 +173,11 @@ checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "phi_save_codec"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
- "bitvec",
  "rmp-serde",
  "serde",
  "shua_struct",
- "shua_struct_macro",
 ]
 
 [[package]]
@@ -274,18 +272,19 @@ dependencies = [
 
 [[package]]
 name = "shua_struct"
-version = "0.1.0"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "331c71c781d1e17d441eb47c1ed05e67250858358e5edfa4bbb47ce285ef9abe"
+checksum = "85970ad1da3f5a546465f371ec1bcb14edf8cad106ba7c7f465e8144bd7b042b"
 dependencies = [
  "bitvec",
+ "shua_struct_macro",
 ]
 
 [[package]]
 name = "shua_struct_macro"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "035a9bd3f1a3e645fdbf9676dbfbbafafc251bf99813d07d120f727bb46d6450"
+checksum = "d339956ca3183b3e111ed9e731120a8f66aeeb6320c09ea9d9b73636b587aff9"
 dependencies = [
  "proc-macro2",
  "quote",

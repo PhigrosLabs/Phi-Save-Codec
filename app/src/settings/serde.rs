@@ -2,7 +2,7 @@ use super::field::{Settings, SettingsBase};
 use crate::phi_base::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableSettingsBase {
     pub chord_support: bool,
     pub fc_ap_indicator: bool,
@@ -10,7 +10,7 @@ pub struct SerializableSettingsBase {
     pub low_resolution_mode: bool,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableSettings {
     pub base: SerializableSettingsBase,
     pub device_name: String,

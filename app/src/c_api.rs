@@ -4,8 +4,7 @@ use crate::game_record::{field::GameRecord, serde::SerializableGameRecord};
 use crate::settings::{field::Settings, serde::SerializableSettings};
 use crate::summary::{field::Summary, serde::SerializableSummary};
 use crate::user::{field::User, serde::SerializableUser};
-use bitvec::prelude::*;
-use shua_struct::field::BinaryField;
+use shua_struct::{BinaryField, BitSlice, Lsb0};
 use std::alloc::{Layout, alloc, dealloc};
 
 #[repr(C)]

@@ -7,8 +7,5 @@ pub mod settings;
 pub mod summary;
 pub mod user;
 
-#[cfg(test)]
-mod test;
-
 #[cfg(feature = "c_abi")]
 mod c_api;

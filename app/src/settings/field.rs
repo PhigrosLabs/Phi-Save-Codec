@@ -1,11 +1,8 @@
-pub(crate) use crate::phi_base::*;
-use bitvec::prelude::*;
-use shua_struct::field::{BinaryField, Options};
-use shua_struct_macro::binary_struct;
-use std::cell::Cell;
+use crate::phi_base::*;
+use shua_struct::BinaryStruct;
 
-#[derive(Debug, Default)]
-#[binary_struct(bit_order = Lsb0)]
+#[derive(Debug, Default, BinaryStruct)]
+#[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct SettingsBase {
     pub chord_support: bool,
     pub fc_ap_indicator: bool,
@@ -13,8 +10,8 @@ pub struct SettingsBase {
     pub low_resolution_mode: bool,
 }
 
-#[derive(Debug, Default)]
-#[binary_struct(bit_order = Lsb0)]
+#[derive(Debug, Default, BinaryStruct)]
+#[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct Settings {
     #[binary_field(align = 8)]
     pub base: SettingsBase,

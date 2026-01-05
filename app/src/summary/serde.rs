@@ -2,14 +2,14 @@ use super::field::{Level, MultiLevel, Summary};
 use crate::phi_base::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableLevel {
     pub clear: u16,
     pub fc: u16,
     pub phi: u16,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableMultiLevel {
     pub ez: SerializableLevel,
     pub hd: SerializableLevel,
@@ -18,7 +18,7 @@ pub struct SerializableMultiLevel {
     pub at: SerializableLevel,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableSummary {
     pub save_version: u8,
     pub challenge_mode_rank: u16,

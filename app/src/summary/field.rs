@@ -1,19 +1,16 @@
-pub(crate) use crate::phi_base::*;
-use bitvec::prelude::*;
-use shua_struct::field::{BinaryField, Options};
-use shua_struct_macro::binary_struct;
-use std::cell::Cell;
+use crate::phi_base::*;
+use shua_struct::BinaryStruct;
 
-#[derive(Debug, Default)]
-#[binary_struct(bit_order = Lsb0)]
+#[derive(Debug, Default, BinaryStruct)]
+#[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct Level {
     pub clear: u16,
     pub fc: u16,
     pub phi: u16,
 }
 
-#[derive(Debug, Default)]
-#[binary_struct(bit_order = Lsb0)]
+#[derive(Debug, Default, BinaryStruct)]
+#[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct MultiLevel {
     pub ez: Level,
     pub hd: Level,
@@ -21,8 +18,8 @@ pub struct MultiLevel {
     pub at: Level,
 }
 
-#[derive(Debug, Default)]
-#[binary_struct(bit_order = Lsb0)]
+#[derive(Debug, Default, BinaryStruct)]
+#[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct Summary {
     pub save_version: u8,
     pub challenge_mode_rank: u16,

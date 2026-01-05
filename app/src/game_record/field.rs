@@ -1,17 +1,15 @@
-pub(crate) use crate::phi_base::*;
-use bitvec::prelude::*;
-use shua_struct::field::{BinaryField, Options};
-use shua_struct_macro::binary_struct;
-use std::cell::Cell;
+use crate::phi_base::*;
+use shua_struct::BinaryStruct;
 
-#[derive(Debug, Default)]
-#[binary_struct(bit_order = Lsb0)]
+#[derive(Debug, Default, BinaryStruct)]
+#[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct LevelRecord {
     pub score: u32,
     pub acc: f32,
 }
-#[derive(Debug, Default)]
-#[binary_struct(bit_order = Lsb0)]
+
+#[derive(Debug, Default, BinaryStruct)]
+#[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct SongEntry {
     pub name: PhiString,
     pub length: VarInt,
@@ -27,8 +25,9 @@ impl SongEntry {
         self.unlock.iter().filter(|bit_bool| **bit_bool).count()
     }
 }
-#[derive(Debug, Default)]
-#[binary_struct(bit_order = Lsb0)]
+
+#[derive(Debug, Default, BinaryStruct)]
+#[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct GameRecord {
     pub song_sum: VarInt,
     #[binary_field(size_field = song_sum)]

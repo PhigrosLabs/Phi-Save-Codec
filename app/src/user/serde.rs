@@ -1,7 +1,7 @@
 use super::field::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableUser {
     pub show_player_id: bool,
     pub self_intro: String,

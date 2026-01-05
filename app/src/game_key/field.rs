@@ -1,11 +1,8 @@
 use crate::phi_base::*;
-use bitvec::prelude::*;
-use shua_struct::field::{BinaryField, Options};
-use shua_struct_macro::binary_struct;
-use std::cell::Cell;
+use shua_struct::BinaryStruct;
 
-#[derive(Debug, Default)]
-#[binary_struct(bit_order = Lsb0)]
+#[derive(Debug, Default, BinaryStruct)]
+#[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct Key {
     pub name: PhiString,
     pub length: u8,
@@ -20,16 +17,16 @@ impl Key {
     }
 }
 
-#[derive(Debug, Default)]
-#[binary_struct(bit_order = Lsb0)]
+#[derive(Debug, Default, BinaryStruct)]
+#[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct KeyList {
     pub key_sum: VarInt,
     #[binary_field(size_field = key_sum)]
     pub key_list: Vec<Key>,
 }
 
-#[derive(Debug, Default)]
-#[binary_struct(bit_order = Lsb0)]
+#[derive(Debug, Default, BinaryStruct)]
+#[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct GameKey {
     pub key_list: KeyList,
     #[binary_field(align = 8)]

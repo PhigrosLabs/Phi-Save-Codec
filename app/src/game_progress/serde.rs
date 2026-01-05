@@ -2,7 +2,7 @@ use super::field::{Chapter8Base, GameProgress, Money, ProgressBase};
 use crate::phi_base::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableBase {
     pub is_first_run: bool,
     pub legacy_chapter_finished: bool,
@@ -10,7 +10,7 @@ pub struct SerializableBase {
     pub already_show_auto_unlock_in_tip: bool,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableMoney {
     pub kib: u16,
     pub mib: u16,
@@ -19,14 +19,14 @@ pub struct SerializableMoney {
     pub pib: u16,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableChapter8Base {
     pub unlock_begin: bool,
     pub unlock_second_phase: bool,
     pub passed: bool,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableGameProgress {
     pub base: SerializableBase,
     pub completed: String,

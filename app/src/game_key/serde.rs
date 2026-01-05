@@ -2,7 +2,7 @@ use super::field::*;
 use crate::phi_base::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableGameKey {
     #[serde(rename = "key_list")]
     pub keys: Vec<SerializableKey>,
@@ -12,7 +12,7 @@ pub struct SerializableGameKey {
     pub old_score_cleared_v390: bool,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableKey {
     pub name: String,
     #[serde(rename = "type")]
