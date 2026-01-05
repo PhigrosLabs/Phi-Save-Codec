@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-multi_value_gen = "0.1.0"
+multi_value_gen = "0.1.1"
 walrus = "0.24.4"

@@ -1,116 +1,63 @@
 import msgpack
-from typing import Any, Callable
-from wasmtime import Store, Module, Instance
-import ctypes
-
-class Codec:
-    @staticmethod
-    def loads(data: bytes) -> Any:
-        return msgpack.unpackb(data)
-
-    @staticmethod
-    def dumps(obj: Any) -> bytes:
-        return msgpack.packb(obj)
-
-class _WasmParser:
-    def __init__(self, name: str):
-        self.name = name
-        self._func: Callable[[bytes], dict[str, Any]] | None = None
-
-    def __get__(self, obj:"PhiSaveCodec", objtype=None) -> Callable[[bytes], dict[str, Any]]:
-        if self._func is None:
-            wasm_func = obj._exports[f"parse_{self.name}"]
-
-            def parse(data: bytes) -> dict[str, Any]:
-                return obj._call_parser(wasm_func, data)
-
-            self._func = parse
-
-        return self._func
-
-
-class _WasmBuilder:
-    def __init__(self, name: str):
-        self.name = name
-        self._func: Callable[[dict[str, Any]], bytes] | None = None
-
-    def __get__(self, obj:"PhiSaveCodec", objtype=None) -> Callable[[dict[str, Any]], bytes]:
-        if self._func is None:
-            wasm_func = obj._exports[f"build_{self.name}"]
-
-            def build(data: dict[str, Any]) -> bytes:
-                return obj._call_builder(wasm_func, data)
-
-            self._func = build
-
-        return self._func
+from wasmtime import Store, Module, Instance, Engine, Memory
 
 class PhiSaveCodec:
-    parse_game_key: Callable[[bytes], dict[str, Any]] = _WasmParser("game_key")
-    build_game_key: Callable[[dict[str, Any]], bytes] = _WasmBuilder("game_key")
-
-    parse_game_record: Callable[[bytes], dict[str, Any]] = _WasmParser("game_record")
-    build_game_record: Callable[[dict[str, Any]], bytes] = _WasmBuilder("game_record")
-
-    parse_game_progress: Callable[[bytes], dict[str, Any]] = _WasmParser("game_progress")
-    build_game_progress: Callable[[dict[str, Any]], bytes] = _WasmBuilder("game_progress")
-
-    parse_user: Callable[[bytes], dict[str, Any]] = _WasmParser("user")
-    build_user: Callable[[dict[str, Any]], bytes] = _WasmBuilder("user")
-
-    parse_summary: Callable[[bytes], dict[str, Any]] = _WasmParser("summary")
-    build_summary: Callable[[dict[str, Any]], bytes] = _WasmBuilder("summary")
-    
-    parse_settings: Callable[[bytes], dict[str, Any]] = _WasmParser("settings")
-    build_settings: Callable[[dict[str, Any]], bytes] = _WasmBuilder("settings")
-
     def __init__(self, wasm_path: str = "phi_save_codec.wasm"):
-        self._store = Store()
-        self._module = Module.from_file(self._store.engine, wasm_path)
+        self._engine = Engine()
+        self._store = Store(self._engine)
+        self._module = Module.from_file(self._engine, wasm_path)
         self._instance = Instance(self._store, self._module, [])
         self._exports = self._instance.exports(self._store)
-
+        self._mem:Memory = self._exports["memory"]
+    
+    def _free(self, ptr: int, size: int):
+        if ptr == 0 or size == 0:
+            raise ValueError("无效指针或大小")
+        self._exports["free"](self._store, ptr, size)
+        
     def _malloc(self, size: int) -> int:
+        if size == 0:
+            raise ValueError("无效大小")
         return self._exports["malloc"](self._store, size)
 
-    def _free(self, ptr: int, size: int) -> None:
-        self._exports["free"](self._store, ptr, size)
+    def _invoke(self, func_name: str, in_data: bytes) -> bytes:
+        # 写入数据
+        in_size = len(in_data)
+        in_ptr = self._malloc(in_size)
+        self._mem.write(self._store,in_data,in_ptr)
+        # 调用函数
+        out_size, out_ptr = self._exports[func_name](self._store, in_ptr, in_size)
+        # 读取数据
+        out_data = self._mem.read(self._store,out_ptr,out_ptr+out_size)
+        # 释放内存
+        self._free(in_ptr,in_size)
+        self._free(out_ptr,out_size)
+        return out_data
 
-    def _write(self, data: bytes, size: int) -> int:
-        ptr = self._malloc(size)
-        if ptr == 0:
-            raise MemoryError("Failed to allocate memory in WASM")
+    def _parse(self, name: str, data: bytes) -> dict:
+        out = self._invoke(f"parse_{name}", data)
+        return msgpack.unpackb(out)
 
-        mem_ptr = self._exports["memory"].data_ptr(self._store)
-        dest = ctypes.c_void_p(ctypes.addressof(mem_ptr.contents) + ptr)
-        ctypes.memmove(dest, data, size)
-        return ptr
+    def _build(self, name: str, obj: dict) -> bytes:
+        return self._invoke(f"build_{name}", msgpack.packb(obj))
 
-    def _read(self, ptr: int, size: int) -> bytes:
-        if ptr == 0 or size == 0:
-            return b""
-        mem = self._exports["memory"].data_ptr(self._store)
-        return bytes(mem[ptr : ptr + size])
+    def memory_size(self) -> int:
+        return self._mem.data_len(self._store)
+    
+    def parse_user(self, data: bytes) -> dict: return self._parse("user", data)
+    def build_user(self, obj: dict) -> bytes: return self._build("user", obj)
 
-    def _call_wasm(self, wasm_func, data: bytes) -> bytes:
-        size = len(data)
-        ptr = self._write(data, size)
+    def parse_summary(self, data: bytes) -> dict: return self._parse("summary", data)
+    def build_summary(self, obj: dict) -> bytes: return self._build("summary", obj)
 
-        out_size, out_ptr = wasm_func(self._store, ptr, size)
-        if out_ptr == 0 or out_size == 0:
-            self._free(ptr, size)
-            raise ValueError("WASM call returned error")
+    def parse_game_record(self, data: bytes) -> dict: return self._parse("game_record", data)
+    def build_game_record(self, obj: dict) -> bytes: return self._build("game_record", obj)
 
-        result = self._read(out_ptr, out_size)
+    def parse_game_progress(self, data: bytes) -> dict: return self._parse("game_progress", data)
+    def build_game_progress(self, obj: dict) -> bytes: return self._build("game_progress", obj)
 
-        self._free(ptr, size)
-        self._free(out_ptr, out_size)
-        return result
+    def parse_game_key(self, data: bytes) -> dict: return self._parse("game_key", data)
+    def build_game_key(self, obj: dict) -> bytes: return self._build("game_key", obj)
 
-    def _call_parser(self, wasm_func, data: bytes) -> dict[str, Any]:
-        out = self._call_wasm(wasm_func, data)
-        return Codec.loads(out)
-
-    def _call_builder(self, wasm_func, data_dict: dict[str, Any]) -> bytes:
-        data = Codec.dumps(data_dict)
-        return self._call_wasm(wasm_func, data)
+    def parse_settings(self, data: bytes) -> dict: return self._parse("settings", data)
+    def build_settings(self, obj: dict) -> bytes: return self._build("settings", obj)

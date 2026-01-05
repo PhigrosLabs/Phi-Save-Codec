@@ -149,9 +149,9 @@ checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
 
 [[package]]
 name = "multi_value_gen"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ab75255b009b42a72976210c6bf5349752f2dda608b51574fda80d04ac3f543"
+checksum = "39735ef3651454fd5cc5218a9137216736097352ff4d581b039c3e29e72830e4"
 dependencies = [
  "walrus",
 ]
