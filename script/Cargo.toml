@@ -5,4 +5,5 @@ edition = "2024"
 
 [dependencies]
 multi_value_gen = "0.1.1"
+syn = { version = "2.0.116", features = ["full"] }
 walrus = "0.24.4"

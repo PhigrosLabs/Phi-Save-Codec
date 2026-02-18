@@ -28,6 +28,7 @@ pub struct SerializableChapter8Base {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableGameProgress {
+    pub version: u8,
     pub base: SerializableBase,
     pub completed: String,
     pub song_update_info: u16,
@@ -40,7 +41,7 @@ pub struct SerializableGameProgress {
     pub random_version_unlocked: [bool; 6],
     pub chapter8_base: SerializableChapter8Base,
     pub chapter8_song_unlocked: [bool; 6],
-    pub flag_of_song_record_key_takumi: [bool; 3],
+    pub flag_of_song_record_key_takumi: Option<[bool; 3]>,
 }
 
 impl From<ProgressBase> for SerializableBase {
@@ -112,6 +113,7 @@ impl From<SerializableChapter8Base> for Chapter8Base {
 impl From<GameProgress> for SerializableGameProgress {
     fn from(g: GameProgress) -> Self {
         Self {
+            version: g.version,
             base: g.base.into(),
             completed: g.completed.0,
             song_update_info: g.song_update_info.0,
@@ -132,6 +134,7 @@ impl From<GameProgress> for SerializableGameProgress {
 impl From<SerializableGameProgress> for GameProgress {
     fn from(g: SerializableGameProgress) -> Self {
         GameProgress {
+            version: g.version,
             base: g.base.into(),
             completed: PhiString(g.completed),
             song_update_info: VarInt(g.song_update_info),

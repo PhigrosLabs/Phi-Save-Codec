@@ -12,6 +12,7 @@ pub struct SerializableSettingsBase {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableSettings {
+    pub version: u8,
     pub base: SerializableSettingsBase,
     pub device_name: String,
     pub bright: f32,
@@ -47,6 +48,7 @@ impl From<SerializableSettingsBase> for SettingsBase {
 impl From<Settings> for SerializableSettings {
     fn from(s: Settings) -> Self {
         Self {
+            version: s.version,
             base: s.base.into(),
             device_name: s.device_name.0,
             bright: s.bright,
@@ -62,6 +64,7 @@ impl From<Settings> for SerializableSettings {
 impl From<SerializableSettings> for Settings {
     fn from(s: SerializableSettings) -> Self {
         Settings {
+            version: s.version,
             base: s.base.into(),
             device_name: PhiString(s.device_name),
             bright: s.bright,

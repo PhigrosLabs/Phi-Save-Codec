@@ -1,14 +1,14 @@
 use crate::phi_base::*;
-use shua_struct::BinaryStruct;
+use shua_struct::BinaryField;
 
-#[derive(Debug, Default, BinaryStruct)]
+#[derive(Debug, Default, BinaryField)]
 #[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct LevelRecord {
     pub score: u32,
     pub acc: f32,
 }
 
-#[derive(Debug, Default, BinaryStruct)]
+#[derive(Debug, Default, BinaryField)]
 #[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct SongEntry {
     pub name: PhiString,
@@ -26,9 +26,10 @@ impl SongEntry {
     }
 }
 
-#[derive(Debug, Default, BinaryStruct)]
+#[derive(Debug, Default, BinaryField)]
 #[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct GameRecord {
+    pub version: u8,
     pub song_sum: VarInt,
     #[binary_field(size_field = song_sum)]
     pub song_list: Vec<SongEntry>,

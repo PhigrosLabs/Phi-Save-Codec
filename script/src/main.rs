@@ -1,9 +1,45 @@
 use multi_value_gen::parse;
 use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
 use std::process::Command;
+use syn::parse_file;
 use walrus::ValType;
+
+fn extract_functions_from_c_api(
+    c_api_path: &str,
+) -> Result<HashMap<String, Vec<ValType>>, Box<dyn std::error::Error>> {
+    let content = fs::read_to_string(c_api_path)?;
+    let file = parse_file(&content)?;
+    let mut funcs: HashMap<String, Vec<ValType>> = HashMap::new();
+    funcs.insert(
+        "get_last_error".to_string(),
+        vec![ValType::I32, ValType::I32],
+    ); // 固定的
+
+    for item in file.items {
+        if let syn::Item::Macro(item_macro) = item {
+            if item_macro.mac.path.is_ident("impl_c_api") {
+                let tokens = &item_macro.mac.tokens;
+                let tokens_str = tokens.to_string();
+
+                let params_str = tokens_str.trim_start_matches('(').trim_end_matches(')');
+                let params: Vec<&str> = params_str.split(',').map(|s: &str| s.trim()).collect();
+
+                if params.len() >= 4 {
+                    let parse_fn = params[2];
+                    let build_fn = params[3];
+
+                    funcs.insert(parse_fn.to_string(), vec![ValType::I32, ValType::I32]);
+                    funcs.insert(build_fn.to_string(), vec![ValType::I32, ValType::I32]);
+
+                    println!("提取函数: {} {}", parse_fn, build_fn);
+                }
+            }
+        }
+    }
+
+    Ok(funcs)
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let status = Command::new("cargo")
@@ -25,32 +61,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     }
 
-    let api_dir = "./app/src/";
-    let mut funcs = HashMap::new();
-
-    if Path::new(api_dir).exists() {
-        for entry in fs::read_dir(api_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-
-            // 只处理目录
-            if path.is_dir() {
-                if let Some(dir_name) = path.file_name() {
-                    let api_name = dir_name.to_string_lossy().to_string();
-                    funcs.insert(
-                        format!("build_{}", api_name),
-                        vec![ValType::I32, ValType::I32],
-                    );
-                    funcs.insert(
-                        format!("parse_{}", api_name),
-                        vec![ValType::I32, ValType::I32],
-                    );
-                }
+    let c_api_path = "./app/src/c_api.rs";
+    let funcs = match extract_functions_from_c_api(c_api_path) {
+        Ok(f) => {
+            if f.is_empty() {
+                eprintln!("警告：从 {} 未提取到任何函数", c_api_path);
+                HashMap::new()
+            } else {
+                f
             }
         }
-    } else {
-        println!("警告: 目录 {} 不存在", api_dir);
-    }
+        Err(e) => {
+            eprintln!("读取或解析 {} 出错: {}", c_api_path, e);
+            HashMap::new()
+        }
+    };
 
     println!("找到 {} 个API函数", funcs.len());
 

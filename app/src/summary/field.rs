@@ -1,7 +1,7 @@
 use crate::phi_base::*;
-use shua_struct::BinaryStruct;
+use shua_struct::BinaryField;
 
-#[derive(Debug, Default, BinaryStruct)]
+#[derive(Debug, Default, BinaryField)]
 #[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct Level {
     pub clear: u16,
@@ -9,7 +9,7 @@ pub struct Level {
     pub phi: u16,
 }
 
-#[derive(Debug, Default, BinaryStruct)]
+#[derive(Debug, Default, BinaryField)]
 #[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct MultiLevel {
     pub ez: Level,
@@ -18,7 +18,7 @@ pub struct MultiLevel {
     pub at: Level,
 }
 
-#[derive(Debug, Default, BinaryStruct)]
+#[derive(Debug, Default, BinaryField)]
 #[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct Summary {
     pub save_version: u8,

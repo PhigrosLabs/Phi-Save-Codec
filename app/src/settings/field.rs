@@ -1,7 +1,7 @@
 use crate::phi_base::*;
-use shua_struct::BinaryStruct;
+use shua_struct::BinaryField;
 
-#[derive(Debug, Default, BinaryStruct)]
+#[derive(Debug, Default, BinaryField)]
 #[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct SettingsBase {
     pub chord_support: bool,
@@ -10,9 +10,10 @@ pub struct SettingsBase {
     pub low_resolution_mode: bool,
 }
 
-#[derive(Debug, Default, BinaryStruct)]
+#[derive(Debug, Default, BinaryField)]
 #[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct Settings {
+    pub version: u8,
     #[binary_field(align = 8)]
     pub base: SettingsBase,
     pub device_name: PhiString,

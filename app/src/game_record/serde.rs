@@ -13,7 +13,10 @@ pub struct SerializableLevelRecord {
 }
 pub type SerializableSongRecord = BTreeMap<String, SerializableLevelRecord>;
 #[derive(Serialize, Deserialize, Debug)]
-pub struct SerializableGameRecord(BTreeMap<String, SerializableSongRecord>);
+pub struct SerializableGameRecord {
+    pub version: u8,
+    pub songs: BTreeMap<String, SerializableSongRecord>,
+}
 
 impl From<GameRecord> for SerializableGameRecord {
     fn from(gr: GameRecord) -> Self {
@@ -37,13 +40,16 @@ impl From<GameRecord> for SerializableGameRecord {
             }
             map.insert(song.name.0, song_map);
         }
-        SerializableGameRecord(map)
+        SerializableGameRecord {
+            version: gr.version,
+            songs: map,
+        }
     }
 }
 impl From<SerializableGameRecord> for GameRecord {
     fn from(sgr: SerializableGameRecord) -> Self {
         let mut song_list: Vec<SongEntry> = Vec::new();
-        for (name, song_map) in sgr.0 {
+        for (name, song_map) in sgr.songs {
             let mut unlock = [false; 5];
             let mut fc = [false; 5];
             let mut levels: Vec<LevelRecord> = Vec::new();
@@ -66,6 +72,7 @@ impl From<SerializableGameRecord> for GameRecord {
             });
         }
         GameRecord {
+            version: sgr.version,
             song_sum: VarInt(song_list.len() as u16),
             song_list,
         }
