@@ -38,12 +38,12 @@ pub struct KeyList {
 #[derive(Debug, Default, BinaryField)]
 #[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct GameKey {
-    #[binary_field(check_func = "check_version")]
     pub version: u8,
     pub key_list: KeyList,
-    #[binary_field(align = 8)]
+    #[binary_field(align = 8)] // is_version_at_least_1
     pub lanota_read_keys: [bool; 6],
-    pub camellia_read_key: [bool; 8],
+    #[binary_field(align = 8, if_func = "is_version_at_least_2")]
+    pub camellia_read_key: Option<bool>,
     #[binary_field(align = 8, if_func = "is_version_at_least_3")]
     pub side_story4_begin_read_key: Option<bool>,
     #[binary_field(align = 8, if_func = "is_version_at_least_3")]
@@ -51,15 +51,11 @@ pub struct GameKey {
 }
 
 impl GameKey {
-    fn check_version(&self) -> Option<String> {
-        if self.version < 2 {
-            return Some("Not supported".into());
-        } else {
-            return None;
-        }
-    }
-
     fn is_version_at_least_3(&self) -> bool {
         self.version >= 3
+    }
+
+    fn is_version_at_least_2(&self) -> bool {
+        self.version >= 2
     }
 }

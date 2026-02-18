@@ -31,7 +31,6 @@ pub struct Chapter8Base {
 #[derive(Debug, Default, BinaryField)]
 #[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct GameProgress {
-    #[binary_field(check_func = "check_version")]
     pub version: u8,
     #[binary_field(align = 8)]
     pub base: ProgressBase,
@@ -45,27 +44,27 @@ pub struct GameProgress {
     pub unlock_flag_of_igallta: [bool; 4],
     #[binary_field(align = 8)]
     pub unlock_flag_of_rrharil: [bool; 4],
-    pub flag_of_song_record_key: [bool; 8],
-    #[binary_field(align = 8)]
+    pub flag_of_song_record_key: [bool; 8], // is_version_at_least_1
+    #[binary_field(align = 8, if_func = "is_version_at_least_2")]
     pub random_version_unlocked: [bool; 6],
-    #[binary_field(align = 8)]
+    #[binary_field(align = 8, if_func = "is_version_at_least_3")]
     pub chapter8_base: Chapter8Base,
-    #[binary_field(align = 8)]
+    #[binary_field(align = 8, if_func = "is_version_at_least_3")]
     pub chapter8_song_unlocked: [bool; 6],
     #[binary_field(align = 8, if_func = "is_version_at_least_4")]
     pub flag_of_song_record_key_takumi: Option<[bool; 3]>,
 }
 
 impl GameProgress {
-    fn check_version(&self) -> Option<String> {
-        if self.version < 3 {
-            Some("Not supported".into())
-        } else {
-            None
-        }
-    }
-
     fn is_version_at_least_4(&self) -> bool {
         self.version >= 4
+    }
+
+    fn is_version_at_least_3(&self) -> bool {
+        self.version >= 3
+    }
+
+    fn is_version_at_least_2(&self) -> bool {
+        self.version >= 2
     }
 }

@@ -18,7 +18,7 @@ pub struct SerializableGameKey {
     pub version: u8,
     pub keys: BTreeMap<String, SerializableKey>,
     pub lanota_read_keys: [bool; 6],
-    pub camellia_read_key: [bool; 8],
+    pub camellia_read_key: Option<bool>,
     pub side_story4_begin_read_key: Option<bool>,
     pub old_score_cleared_v390: Option<bool>,
 }
