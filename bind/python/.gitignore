@@ -1,0 +1,7 @@
+.venv/
+/**/**/__pycache__/
+.pdm-python
+phi_save_codec/bin/
+.ruff_cache
+dist
+.pdm-build

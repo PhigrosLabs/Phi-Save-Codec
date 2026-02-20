@@ -1,0 +1,2 @@
+class PhiSaveCodecError(Exception):
+    pass
