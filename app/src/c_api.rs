@@ -45,7 +45,7 @@ pub unsafe fn malloc_data(mut bytes: Vec<u8>) -> Data {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn malloc(len: usize) -> *mut u8 {
+pub extern "C" fn psc_malloc(len: usize) -> *mut u8 {
     if len == 0 {
         set_error("无效长度");
         return std::ptr::null_mut();
@@ -65,7 +65,7 @@ pub extern "C" fn malloc(len: usize) -> *mut u8 {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn free(ptr: *mut u8, len: usize) -> bool {
+pub extern "C" fn psc_free(ptr: *mut u8, len: usize) -> bool {
     unsafe {
         let layout = match Layout::array::<u8>(len) {
             Ok(l) => l,
@@ -80,7 +80,7 @@ pub extern "C" fn free(ptr: *mut u8, len: usize) -> bool {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn get_last_error() -> Data {
+pub extern "C" fn psc_get_last_error() -> Data {
     LAST_ERROR.with(|err| {
         if let Ok(e) = err.lock() {
             if e.is_empty() {
@@ -95,7 +95,7 @@ pub extern "C" fn get_last_error() -> Data {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn clear_last_error() -> bool {
+pub extern "C" fn psc_clear_last_error() -> bool {
     LAST_ERROR.with(|err| match err.lock() {
         Ok(mut e) => {
             e.clear();
@@ -117,7 +117,7 @@ macro_rules! impl_c_api {
             let bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
             let bits = BitSlice::<u8, Lsb0>::from_slice(bytes);
 
-            let (item, _) = match <$struct_ty>::parse(bits, &None) {
+            let item = match <$struct_ty>::parse(bits, &None) {
                 Ok(r) => r,
                 Err(e) => {
                     set_error(&format!("解析错误: {}", e));
@@ -165,24 +165,34 @@ macro_rules! impl_c_api {
     };
 }
 
-impl_c_api!(User, SerializableUser, parse_user, build_user);
-impl_c_api!(Summary, SerializableSummary, parse_summary, build_summary);
+impl_c_api!(User, SerializableUser, psc_parse_user, psc_build_user);
+impl_c_api!(
+    Summary,
+    SerializableSummary,
+    psc_parse_summary,
+    psc_build_summary
+);
 impl_c_api!(
     GameRecord,
     SerializableGameRecord,
-    parse_game_record,
-    build_game_record
+    psc_parse_game_record,
+    psc_build_game_record
 );
 impl_c_api!(
     GameProgress,
     SerializableGameProgress,
-    parse_game_progress,
-    build_game_progress
+    psc_parse_game_progress,
+    psc_build_game_progress
 );
-impl_c_api!(GameKey, SerializableGameKey, parse_game_key, build_game_key);
+impl_c_api!(
+    GameKey,
+    SerializableGameKey,
+    psc_parse_game_key,
+    psc_build_game_key
+);
 impl_c_api!(
     Settings,
     SerializableSettings,
-    parse_settings,
-    build_settings
+    psc_parse_settings,
+    psc_build_settings
 );

@@ -14,7 +14,7 @@ class PhiSaveCodec:
         self._mem: Memory = self._exports["memory"] # pyright: ignore[reportAttributeAccessIssue]
     
     def _get_last_error(self) -> str:
-        err_size, err_ptr = self._exports["get_last_error"](self._store) # pyright: ignore[reportCallIssue]
+        err_size, err_ptr = self._exports["psc_get_last_error"](self._store) # pyright: ignore[reportCallIssue]
         if err_ptr == 0 or err_size == 0:
             return ""
         try:
@@ -26,20 +26,20 @@ class PhiSaveCodec:
             return f"读取错误信息失败: {str(e)}"
     
     def _clear_last_error(self):
-        if self._exports["clear_last_error"](self._store) != 1: # pyright: ignore[reportCallIssue]
+        if self._exports["psc_clear_last_error"](self._store) != 1: # pyright: ignore[reportCallIssue]
             raise PhiSaveCodecError("没有错误")
     
     def _free(self, ptr: int, size: int) -> None:
         if ptr == 0 or size == 0:
             return
-        result = self._exports["free"](self._store, ptr, size) # pyright: ignore[reportCallIssue]
+        result = self._exports["psc_free"](self._store, ptr, size) # pyright: ignore[reportCallIssue]
         if not result:
             raise PhiSaveCodecError("内存释放失败")
         
     def _malloc(self, size: int) -> int:
         if size == 0:
             raise PhiSaveCodecError("无效的大小")
-        ptr = self._exports["malloc"](self._store, size) # pyright: ignore[reportCallIssue]
+        ptr = self._exports["psc_malloc"](self._store, size) # pyright: ignore[reportCallIssue]
         if ptr == 0:
             error_msg = self._get_last_error()
             self._clear_last_error()
@@ -54,7 +54,7 @@ class PhiSaveCodec:
         try:
             self._mem.write(self._store, in_data, in_ptr)
             # 调用函数
-            out_size, out_ptr = self._exports[func_name](self._store, in_ptr, in_size) # pyright: ignore[reportCallIssue]
+            out_size, out_ptr = self._exports["psc_"+func_name](self._store, in_ptr, in_size) # pyright: ignore[reportCallIssue]
             
             # 检查输出指针
             if out_ptr == 0:

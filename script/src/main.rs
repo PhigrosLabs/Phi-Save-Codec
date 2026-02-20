@@ -12,7 +12,7 @@ fn extract_functions_from_c_api(
     let file = parse_file(&content)?;
     let mut funcs: HashMap<String, Vec<ValType>> = HashMap::new();
     funcs.insert(
-        "get_last_error".to_string(),
+        "psc_get_last_error".to_string(),
         vec![ValType::I32, ValType::I32],
     ); // 固定的
 
