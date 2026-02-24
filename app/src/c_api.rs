@@ -9,7 +9,7 @@ use std::alloc::{Layout, alloc, dealloc};
 use std::sync::Mutex;
 
 thread_local! {
-    static LAST_ERROR: Mutex<String> = Mutex::new(String::new());
+    static LAST_ERROR: Mutex<String> = const { Mutex::new(String::new()) };
 }
 
 fn set_error(msg: &str) {
@@ -60,7 +60,7 @@ pub extern "C" fn psc_malloc(len: usize) -> *mut u8 {
             }
         };
 
-        return alloc(layout);
+        alloc(layout)
     }
 }
 
@@ -75,7 +75,7 @@ pub extern "C" fn psc_free(ptr: *mut u8, len: usize) -> bool {
             }
         };
         dealloc(ptr, layout);
-        return true;
+        true
     }
 }
 
@@ -117,10 +117,10 @@ macro_rules! impl_c_api {
             let bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
             let bits = BitSlice::<u8, Lsb0>::from_slice(bytes);
 
-            let item = match <$struct_ty>::parse(bits, &None) {
+            let item = match <$struct_ty>::parse(bits, &()) {
                 Ok(r) => r,
                 Err(e) => {
-                    set_error(&format!("解析错误: {}", e));
+                    set_error(&format!("解析错误: {:?}", e));
                     return empty_data();
                 }
             };
@@ -128,7 +128,7 @@ macro_rules! impl_c_api {
             let json = match rmp_serde::to_vec_named(&<$serializable_ty>::from(item)) {
                 Ok(v) => v,
                 Err(e) => {
-                    set_error(&format!("序列化错误: {}", e));
+                    set_error(&format!("序列化错误: {:?}", e));
                     return empty_data();
                 }
             };
@@ -147,15 +147,15 @@ macro_rules! impl_c_api {
             let serializable: $serializable_ty = match rmp_serde::from_slice(bytes) {
                 Ok(v) => v,
                 Err(e) => {
-                    set_error(&format!("反序列化错误: {}", e));
+                    set_error(&format!("反序列化错误: {:?}", e));
                     return empty_data();
                 }
             };
 
-            let bitvec = match <$struct_ty>::from(serializable).build(&None) {
+            let bitvec = match <$struct_ty>::from(serializable).to_bitvec(&()) {
                 Ok(v) => v,
                 Err(e) => {
-                    set_error(&format!("构建错误: {}", e));
+                    set_error(&format!("构建错误: {:?}", e));
                     return empty_data();
                 }
             };

@@ -5,7 +5,7 @@ Phi-Save-Codec 的 Python 绑定，用于解析和构建 Phigros 的云端存档
 ## 安装
 
 ```bash
-pip install -r requirements.txt
+pip install phi_save_codec
 ```
 
 ## 使用
@@ -14,7 +14,7 @@ pip install -r requirements.txt
 from phi_save_codec import PhiSaveCodec, PhiSaveCodecError
 
 # 初始化编解码器
-codec = PhiSaveCodec("phi_save_codec.wasm")
+codec = PhiSaveCodec()
 
 # 解析二进制数据
 try:

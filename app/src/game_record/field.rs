@@ -17,7 +17,7 @@ pub struct SongEntry {
     pub unlock: [bool; 5],
     #[binary_field(align = 8)]
     pub fc: [bool; 5],
-    #[binary_field(size_func = get_levels_len)]
+    #[binary_field(count_func = get_levels_len)]
     pub levels: Vec<LevelRecord>,
 }
 impl SongEntry {
@@ -31,6 +31,6 @@ impl SongEntry {
 pub struct GameRecord {
     pub version: u8,
     pub song_sum: VarInt,
-    #[binary_field(size_field = song_sum)]
+    #[binary_field(count_field = song_sum)]
     pub song_list: Vec<SongEntry>,
 }

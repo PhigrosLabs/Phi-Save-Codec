@@ -35,35 +35,25 @@ impl From<Key> for SerializableKey {
             unlock_avatar: None,
         };
 
-        if k.r#type.exist_read_collection_piece_num {
-            if flag_idx < k.flag.len() {
-                result.read_collection_piece_num = Some(k.flag[flag_idx]);
-                flag_idx += 1;
-            }
+        if k.r#type.exist_read_collection_piece_num && flag_idx < k.flag.len() {
+            result.read_collection_piece_num = Some(k.flag[flag_idx]);
+            flag_idx += 1;
         }
-        if k.r#type.exist_unlcok_single {
-            if flag_idx < k.flag.len() {
-                result.unlock_single = Some(k.flag[flag_idx] == 1);
-                flag_idx += 1;
-            }
+        if k.r#type.exist_unlcok_single && flag_idx < k.flag.len() {
+            result.unlock_single = Some(k.flag[flag_idx] == 1);
+            flag_idx += 1;
         }
-        if k.r#type.exist_unlock_collection_piece_num {
-            if flag_idx < k.flag.len() {
-                result.unlock_collection_piece_num = Some(k.flag[flag_idx]);
-                flag_idx += 1;
-            }
+        if k.r#type.exist_unlock_collection_piece_num && flag_idx < k.flag.len() {
+            result.unlock_collection_piece_num = Some(k.flag[flag_idx]);
+            flag_idx += 1;
         }
-        if k.r#type.exist_unlock_illustration {
-            if flag_idx < k.flag.len() {
-                result.unlock_illustration = Some(k.flag[flag_idx] == 1);
-                flag_idx += 1;
-            }
+        if k.r#type.exist_unlock_illustration && flag_idx < k.flag.len() {
+            result.unlock_illustration = Some(k.flag[flag_idx] == 1);
+            flag_idx += 1;
         }
-        if k.r#type.exist_unlock_avatar {
-            if flag_idx < k.flag.len() {
-                result.unlock_avatar = Some(k.flag[flag_idx] == 1);
-                flag_idx += 1;
-            }
+        if k.r#type.exist_unlock_avatar && flag_idx < k.flag.len() {
+            result.unlock_avatar = Some(k.flag[flag_idx] == 1);
+            flag_idx += 1;
         }
 
         result
@@ -79,7 +69,7 @@ impl From<GameKey> for SerializableGameKey {
 
         SerializableGameKey {
             version: gk.version,
-            keys: keys,
+            keys,
             lanota_read_keys: gk.lanota_read_keys,
             camellia_read_key: gk.camellia_read_key,
             side_story4_begin_read_key: gk.side_story4_begin_read_key,
@@ -126,7 +116,7 @@ impl From<(String, SerializableKey)> for Key {
 impl From<SerializableGameKey> for GameKey {
     fn from(sgk: SerializableGameKey) -> Self {
         let key_sum = sgk.keys.len();
-        let key_list = sgk.keys.into_iter().map(|kv| Key::from(kv)).collect();
+        let key_list = sgk.keys.into_iter().map(Key::from).collect();
 
         GameKey {
             version: sgk.version,

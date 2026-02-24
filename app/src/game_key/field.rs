@@ -18,12 +18,12 @@ pub struct Key {
     pub length: u8,
     #[binary_field(align = 8)]
     pub r#type: KeyType,
-    #[binary_field(size_func = get_flag_len)]
+    #[binary_field(count_func = get_flag_len)]
     pub flag: Vec<u8>,
 }
 impl Key {
     fn get_flag_len(&self) -> usize {
-        return (self.length).saturating_sub(1) as usize;
+        (self.length).saturating_sub(1) as usize
     }
 }
 
@@ -31,7 +31,7 @@ impl Key {
 #[binary_struct(bit_order = shua_struct::Lsb0)]
 pub struct KeyList {
     pub key_sum: VarInt,
-    #[binary_field(size_field = key_sum)]
+    #[binary_field(count_field = key_sum)]
     pub key_list: Vec<Key>,
 }
 

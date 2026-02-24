@@ -24,11 +24,11 @@ impl From<GameRecord> for SerializableGameRecord {
         for song in gr.song_list {
             let mut song_map: BTreeMap<String, SerializableLevelRecord> = BTreeMap::new();
             let mut level_idx = 0;
-            for i in 0..5 {
+            for (i, diff) in DIFF_ORDER.iter().enumerate() {
                 if song.unlock[i] {
                     let level = &song.levels[level_idx];
                     song_map.insert(
-                        DIFF_ORDER[i].to_string(),
+                        diff.to_string(),
                         SerializableLevelRecord {
                             score: level.score,
                             acc: level.acc,

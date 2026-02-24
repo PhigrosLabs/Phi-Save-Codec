@@ -1,6 +1,6 @@
 [project]
 name = "phi_save_codec"
-version = "0.2.2"
+version = "0.2.3"
 description = "Phigros Cloud Save Codec Library"
 authors = [
     {name = "Shua-github", email = "CHA_shua@outlook.com"},

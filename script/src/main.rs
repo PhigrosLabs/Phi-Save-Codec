@@ -17,23 +17,23 @@ fn extract_functions_from_c_api(
     ); // 固定的
 
     for item in file.items {
-        if let syn::Item::Macro(item_macro) = item {
-            if item_macro.mac.path.is_ident("impl_c_api") {
-                let tokens = &item_macro.mac.tokens;
-                let tokens_str = tokens.to_string();
+        if let syn::Item::Macro(item_macro) = item
+            && item_macro.mac.path.is_ident("impl_c_api")
+        {
+            let tokens = &item_macro.mac.tokens;
+            let tokens_str = tokens.to_string();
 
-                let params_str = tokens_str.trim_start_matches('(').trim_end_matches(')');
-                let params: Vec<&str> = params_str.split(',').map(|s: &str| s.trim()).collect();
+            let params_str = tokens_str.trim_start_matches('(').trim_end_matches(')');
+            let params: Vec<&str> = params_str.split(',').map(|s: &str| s.trim()).collect();
 
-                if params.len() >= 4 {
-                    let parse_fn = params[2];
-                    let build_fn = params[3];
+            if params.len() >= 4 {
+                let parse_fn = params[2];
+                let build_fn = params[3];
 
-                    funcs.insert(parse_fn.to_string(), vec![ValType::I32, ValType::I32]);
-                    funcs.insert(build_fn.to_string(), vec![ValType::I32, ValType::I32]);
+                funcs.insert(parse_fn.to_string(), vec![ValType::I32, ValType::I32]);
+                funcs.insert(build_fn.to_string(), vec![ValType::I32, ValType::I32]);
 
-                    println!("提取函数: {} {}", parse_fn, build_fn);
-                }
+                println!("提取函数: {} {}", parse_fn, build_fn);
             }
         }
     }
