@@ -2,7 +2,8 @@ use multi_value_gen::parse;
 use std::collections::HashMap;
 use std::fs;
 use std::process::Command;
-use syn::parse_file;
+use syn::{Item, parse_file};
+
 use walrus::ValType;
 
 fn extract_functions_from_c_api(
@@ -10,30 +11,36 @@ fn extract_functions_from_c_api(
 ) -> Result<HashMap<String, Vec<ValType>>, Box<dyn std::error::Error>> {
     let content = fs::read_to_string(c_api_path)?;
     let file = parse_file(&content)?;
+
     let mut funcs: HashMap<String, Vec<ValType>> = HashMap::new();
-    funcs.insert(
-        "psc_get_last_error".to_string(),
-        vec![ValType::I32, ValType::I32],
-    ); // 固定的
 
     for item in file.items {
-        if let syn::Item::Macro(item_macro) = item
-            && item_macro.mac.path.is_ident("impl_c_api")
-        {
-            let tokens = &item_macro.mac.tokens;
-            let tokens_str = tokens.to_string();
+        if let Item::Macro(item_macro) = item {
+            let path = item_macro
+                .mac
+                .path
+                .segments
+                .last()
+                .map(|s| s.ident.to_string());
 
-            let params_str = tokens_str.trim_start_matches('(').trim_end_matches(')');
-            let params: Vec<&str> = params_str.split(',').map(|s: &str| s.trim()).collect();
+            if path.as_deref() == Some("impl_c_api") {
+                let tokens = item_macro.mac.tokens.to_string();
 
-            if params.len() >= 4 {
-                let parse_fn = params[2];
-                let build_fn = params[3];
+                let inner = tokens.trim_start_matches('(').trim_end_matches(')').trim();
 
-                funcs.insert(parse_fn.to_string(), vec![ValType::I32, ValType::I32]);
-                funcs.insert(build_fn.to_string(), vec![ValType::I32, ValType::I32]);
+                let params: Vec<&str> = inner.split(',').map(|s| s.trim()).collect();
 
-                println!("提取函数: {} {}", parse_fn, build_fn);
+                if params.len() >= 3 {
+                    let parse_fn = params[1];
+                    let build_fn = params[2];
+
+                    let sig = vec![ValType::I32, ValType::I32, ValType::I32];
+
+                    funcs.insert(parse_fn.to_string(), sig.clone());
+                    funcs.insert(build_fn.to_string(), sig);
+                } else {
+                    println!("[WARN] macro 参数不足: {}", tokens);
+                }
             }
         }
     }
@@ -41,15 +48,13 @@ fn extract_functions_from_c_api(
     Ok(funcs)
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn build_wasm() -> Result<(), Box<dyn std::error::Error>> {
     let status = Command::new("cargo")
         .args([
             "build",
             "--lib",
             "-p",
-            "phi_save_codec",
-            "--features",
-            "c_abi",
+            "phi_save_codec_c_api",
             "--release",
             "--target",
             "wasm32-unknown-unknown",
@@ -57,46 +62,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .status()?;
 
     if !status.success() {
-        eprintln!("cargo build 失败，退出程序");
-        std::process::exit(1);
+        return Err("cargo build failed".into());
     }
 
-    let c_api_path = "./app/src/c_api.rs";
-    let funcs = match extract_functions_from_c_api(c_api_path) {
-        Ok(f) => {
-            if f.is_empty() {
-                eprintln!("警告：从 {} 未提取到任何函数", c_api_path);
-                HashMap::new()
-            } else {
-                f
-            }
-        }
-        Err(e) => {
-            eprintln!("读取或解析 {} 出错: {}", c_api_path, e);
-            HashMap::new()
-        }
-    };
+    Ok(())
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("=== Build WASM ===");
+    build_wasm()?;
+
+    let c_api_path = "./c_api/src/lib.rs";
+
+    println!("=== Extract C API ===");
+    let funcs = extract_functions_from_c_api(c_api_path)?;
 
     println!("找到 {} 个API函数", funcs.len());
 
-    let wasm_file = "./target/wasm32-unknown-unknown/release/phi_save_codec.wasm";
+    if funcs.is_empty() {
+        return Err("没有需要转换的函数".into());
+    }
+
+    let wasm_file = "./target/wasm32-unknown-unknown/release/phi_save_codec_c_api.wasm";
     let wasm_bytes = fs::read(wasm_file)?;
 
-    match parse(wasm_bytes, funcs) {
-        Ok(processed_wasm) => {
-            let output_dir = "./output/";
-            fs::create_dir_all(output_dir)?;
+    println!("=== Processing WASM ===");
+    let processed_wasm = parse(wasm_bytes, funcs)?;
 
-            let output_path = format!("{}phi_save_codec.wasm", output_dir);
-            fs::write(&output_path, processed_wasm)?;
+    let output_dir = "./output";
+    fs::create_dir_all(output_dir)?;
 
-            println!("保存到: {}", output_path);
-        }
-        Err(e) => {
-            eprintln!("处理WASM文件时出错: {}", e);
-            return Err(e.into());
-        }
-    }
+    let output_path = format!("{}/phi_save_codec.wasm", output_dir);
+    fs::write(&output_path, processed_wasm)?;
+
+    println!("输出完成: {}", output_path);
 
     Ok(())
 }

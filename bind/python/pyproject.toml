@@ -1,9 +1,9 @@
 [project]
 name = "phi_save_codec"
-version = "0.2.3"
+version = "0.3.1"
 description = "Phigros Cloud Save Codec Library"
 authors = [
-    {name = "Shua-github", email = "CHA_shua@outlook.com"},
+    {name = "PhigrosLabs", email = "admin@phigros-labs.dev"},
 ]
 dependencies = ["wasmtime>=41.0.0", "msgpack>=1.1.2"]
 requires-python = ">=3.10"
@@ -18,4 +18,4 @@ build-backend = "pdm.backend"
 distribution = true
 
 [tool.pdm.scripts]
-pre_build = "cp -f ../../output/phi_save_codec.wasm ./phi_save_codec/bin/phi_save_codec.wasm"
+pre_build = "python scripts/copy_wasm.py"

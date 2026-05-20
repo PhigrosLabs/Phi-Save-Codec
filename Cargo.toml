@@ -2,6 +2,7 @@
 members = [
     "script",
     "app",
+    "c_api",
 ]
 resolver = "3"
 

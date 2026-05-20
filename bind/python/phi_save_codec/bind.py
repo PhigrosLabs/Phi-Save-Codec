@@ -14,22 +14,6 @@ class PhiSaveCodec:
         self._exports = self._instance.exports(self._store)
         self._mem: Memory = self._exports["memory"]  # pyright: ignore[reportAttributeAccessIssue]
 
-    def _get_last_error(self) -> str:
-        err_size, err_ptr = self._exports["psc_get_last_error"](self._store)  # pyright: ignore[reportCallIssue]
-        if err_ptr == 0 or err_size == 0:
-            return ""
-        try:
-            error_bytes = self._mem.read(self._store, err_ptr, err_ptr + err_size)
-            error_msg = error_bytes.decode("utf-8")
-            self._free(err_ptr, err_size)
-            return error_msg
-        except Exception as e:
-            return f"读取错误信息失败: {str(e)}"
-
-    def _clear_last_error(self):
-        if self._exports["psc_clear_last_error"](self._store) != 1:  # pyright: ignore[reportCallIssue]
-            raise PhiSaveCodecError("没有错误")
-
     def _free(self, ptr: int, size: int) -> None:
         if ptr == 0 or size == 0:
             return
@@ -42,36 +26,42 @@ class PhiSaveCodec:
             raise PhiSaveCodecError("无效的大小")
         ptr = self._exports["psc_malloc"](self._store, size)  # pyright: ignore[reportCallIssue]
         if ptr == 0:
-            error_msg = self._get_last_error()
-            self._clear_last_error()
-            raise PhiSaveCodecError(f"内存分配失败: {error_msg}")
+
+            raise PhiSaveCodecError("内存分配失败")
         return ptr
 
     def _invoke(self, func_name: str, in_data: bytes) -> bytes:
-        # 写入数据
         in_size = len(in_data)
         in_ptr = self._malloc(in_size)
 
         try:
             self._mem.write(self._store, in_data, in_ptr)
-            # 调用函数
-            out_size, out_ptr = self._exports["psc_" + func_name](
+
+            tag, out_size, out_ptr = self._exports["psc_" + func_name](
                 self._store, in_ptr, in_size
-            )  # pyright: ignore[reportCallIssue]
+            ) # pyright: ignore[reportCallIssue]
 
-            # 检查输出指针
-            if out_ptr == 0:
-                error_msg = self._get_last_error()
-                self._clear_last_error()
-                raise PhiSaveCodecError(f"函数调用失败 ({func_name}): {error_msg}")
+            if tag != 0:
+                if out_ptr != 0 and out_size != 0:
+                    err_bytes = self._mem.read(self._store, out_ptr, out_ptr + out_size)
+                    try:
+                        msg = err_bytes.decode("utf-8")
+                    except Exception:
+                        msg = "unknown error (invalid utf-8)"
+                    self._free(out_ptr, out_size)
+                else:
+                    msg = "unknown error (empty error payload)"
 
-            # 读取数据
+                raise PhiSaveCodecError(f"{func_name}: {msg}")
+
+            if out_ptr == 0 or out_size == 0:
+                raise PhiSaveCodecError(f"{func_name}: empty result")
+
             out_data = self._mem.read(self._store, out_ptr, out_ptr + out_size)
-
-            # 释放临时内存
             self._free(out_ptr, out_size)
 
             return out_data
+
         finally:
             self._free(in_ptr, in_size)
 
