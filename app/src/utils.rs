@@ -9,6 +9,7 @@ use crate::Binary;
 pub enum BinaryError {
     NotEnoughData,
     InvalidUtf8,
+    InvalidData,
 }
 
 impl fmt::Display for BinaryError {
@@ -16,6 +17,7 @@ impl fmt::Display for BinaryError {
         match self {
             BinaryError::NotEnoughData => write!(f, "not enough data"),
             BinaryError::InvalidUtf8 => write!(f, "invalid UTF-8 in string field"),
+            BinaryError::InvalidData => write!(f, "invalid Data"),
         }
     }
 }

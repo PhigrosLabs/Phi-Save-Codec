@@ -1,4 +1,3 @@
-use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
@@ -40,18 +39,24 @@ impl Binary for LevelRecord {
 }
 
 // --- SongRecord ---
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type", content = "data", rename_all = "snake_case")]
+pub enum SongRecord {
+    Raw(Vec<u8>),
+    Normal(NormalSongRecord),
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct SongRecord {
-    #[serde(skip_serializing_if = "Option::is_none")]
+pub struct NormalSongRecord {
+    #[serde(rename = "EZ", skip_serializing_if = "Option::is_none")]
     pub ez: Option<LevelRecord>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "HD", skip_serializing_if = "Option::is_none")]
     pub hd: Option<LevelRecord>,
-    #[serde(rename = "in", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "IN", skip_serializing_if = "Option::is_none")]
     pub r#in: Option<LevelRecord>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "AT", skip_serializing_if = "Option::is_none")]
     pub at: Option<LevelRecord>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "Legacy", skip_serializing_if = "Option::is_none")]
     pub legacy: Option<LevelRecord>,
 }
 
@@ -59,109 +64,173 @@ impl Binary for SongRecord {
     type Error = BinaryError;
 
     fn read(data: &[u8]) -> Result<Self, Self::Error> {
-        let mut pos = 0;
-        let _vi = VarInt::read(&data[pos..])?;
-        pos += _vi.len(); // length = levels_len * 8 + 2
-        let unlock = Difficulty5::read(&data[pos..])?;
-        pos += unlock.len();
-        let fc = Difficulty5::read(&data[pos..])?;
-        pos += fc.len();
+        fn parse_normal(data: &[u8]) -> Result<NormalSongRecord, BinaryError> {
+            let mut pos = 0;
 
-        let num_levels = unlock.count_unlocked();
-        let mut levels = Vec::with_capacity(num_levels);
-        for _ in 0..num_levels {
-            let lr = LevelRecord::read(&data[pos..])?;
-            pos += lr.len();
-            levels.push(lr);
+            let payload_len = VarInt::read(&data[pos..])?;
+            pos += payload_len.len();
+
+            // unlock + fc
+            if data.len() < pos + 2 {
+                return Err(BinaryError::NotEnoughData);
+            }
+
+            let unlock = Difficulty5::read(&data[pos..])?;
+            pos += unlock.len();
+
+            let fc = Difficulty5::read(&data[pos..])?;
+            pos += fc.len();
+
+            let num_levels = unlock.count_unlocked();
+
+            let mut levels = Vec::with_capacity(num_levels);
+
+            for _ in 0..num_levels {
+                if data.len() < pos + 8 {
+                    return Err(BinaryError::NotEnoughData);
+                }
+
+                let lr = LevelRecord::read(&data[pos..])?;
+                pos += lr.len();
+                levels.push(lr);
+            }
+
+            // payload 长度校验
+            let expected_payload = num_levels * 8 + 2;
+            if payload_len.0 as usize != expected_payload {
+                return Err(BinaryError::InvalidData);
+            }
+
+            let mut sr = NormalSongRecord::default();
+
+            let mut idx = 0;
+
+            let mut take = |unlocked: bool, fc_flag: bool| -> Option<LevelRecord> {
+                if !unlocked {
+                    return None;
+                }
+
+                let base = levels.get(idx)?;
+                idx += 1;
+
+                Some(LevelRecord {
+                    score: base.score,
+                    acc: base.acc,
+                    fc: fc_flag,
+                })
+            };
+
+            sr.ez = take(unlock.ez, fc.ez);
+            sr.hd = take(unlock.hd, fc.hd);
+            sr.r#in = take(unlock.r#in, fc.r#in);
+            sr.at = take(unlock.at, fc.at);
+            sr.legacy = take(unlock.legacy, fc.legacy);
+
+            Ok(sr)
         }
 
-        let mut sr = SongRecord::default();
-        let mut idx = 0;
-        let mut set = |unlocked: bool, fc: bool| -> Option<LevelRecord> {
-            if unlocked {
-                let lr = levels.get(idx).map(|l| LevelRecord {
-                    score: l.score,
-                    acc: l.acc,
-                    fc,
-                });
-                idx += 1;
-                lr
-            } else {
-                None
-            }
-        };
-        sr.ez = set(unlock.ez, fc.ez);
-        sr.hd = set(unlock.hd, fc.hd);
-        sr.r#in = set(unlock.r#in, fc.r#in);
-        sr.at = set(unlock.at, fc.at);
-        sr.legacy = set(unlock.legacy, fc.legacy);
-        Ok(sr)
+        match parse_normal(data) {
+            Ok(v) => Ok(SongRecord::Normal(v)),
+            Err(_) => Ok(SongRecord::Raw(data.to_vec())),
+        }
     }
 
     fn write(&self, data: &mut [u8]) -> Result<(), Self::Error> {
-        let mut unlock = Difficulty5::default();
-        let mut fc = Difficulty5::default();
-        let mut level_count = 0;
+        match self {
+            SongRecord::Raw(raw) => {
+                if data.len() < raw.len() {
+                    return Err(BinaryError::NotEnoughData);
+                }
 
-        if let Some(lr) = &self.ez {
-            unlock.ez = true;
-            fc.ez = lr.fc;
-            level_count += 1;
-        }
-        if let Some(lr) = &self.hd {
-            unlock.hd = true;
-            fc.hd = lr.fc;
-            level_count += 1;
-        }
-        if let Some(lr) = &self.r#in {
-            unlock.r#in = true;
-            fc.r#in = lr.fc;
-            level_count += 1;
-        }
-        if let Some(lr) = &self.at {
-            unlock.at = true;
-            fc.at = lr.fc;
-            level_count += 1;
-        }
-        if let Some(lr) = &self.legacy {
-            unlock.legacy = true;
-            fc.legacy = lr.fc;
-            level_count += 1;
-        }
-
-        let mut pos = 0;
-        VarInt((level_count as u16 * 8) + 2).write(&mut data[pos..])?;
-        pos += VarInt((level_count as u16 * 8) + 2).len();
-        unlock.write(&mut data[pos..])?;
-        pos += unlock.len();
-        fc.write(&mut data[pos..])?;
-        pos += fc.len();
-        let write_one = |opt: &Option<LevelRecord>,
-                         data: &mut [u8],
-                         pos: usize|
-         -> Result<usize, BinaryError> {
-            if let Some(lr) = opt {
-                lr.write(&mut data[pos..])?;
-                Ok(pos + lr.len())
-            } else {
-                Ok(pos)
+                data[..raw.len()].copy_from_slice(raw);
+                Ok(())
             }
-        };
-        pos = write_one(&self.ez, data, pos)?;
-        pos = write_one(&self.hd, data, pos)?;
-        pos = write_one(&self.r#in, data, pos)?;
-        pos = write_one(&self.at, data, pos)?;
-        write_one(&self.legacy, data, pos)?;
-        Ok(())
+
+            SongRecord::Normal(sr) => {
+                let mut unlock = Difficulty5::default();
+                let mut fc = Difficulty5::default();
+                let mut level_count = 0;
+
+                if let Some(lr) = &sr.ez {
+                    unlock.ez = true;
+                    fc.ez = lr.fc;
+                    level_count += 1;
+                }
+
+                if let Some(lr) = &sr.hd {
+                    unlock.hd = true;
+                    fc.hd = lr.fc;
+                    level_count += 1;
+                }
+
+                if let Some(lr) = &sr.r#in {
+                    unlock.r#in = true;
+                    fc.r#in = lr.fc;
+                    level_count += 1;
+                }
+
+                if let Some(lr) = &sr.at {
+                    unlock.at = true;
+                    fc.at = lr.fc;
+                    level_count += 1;
+                }
+
+                if let Some(lr) = &sr.legacy {
+                    unlock.legacy = true;
+                    fc.legacy = lr.fc;
+                    level_count += 1;
+                }
+
+                let mut pos = 0;
+
+                let payload = (level_count as u16 * 8) + 2;
+
+                let varint = VarInt(payload);
+
+                varint.write(&mut data[pos..])?;
+                pos += varint.len();
+
+                unlock.write(&mut data[pos..])?;
+                pos += unlock.len();
+
+                fc.write(&mut data[pos..])?;
+                pos += fc.len();
+
+                let mut write_one = |opt: &Option<LevelRecord>| -> Result<(), BinaryError> {
+                    if let Some(lr) = opt {
+                        lr.write(&mut data[pos..])?;
+                        pos += lr.len();
+                    }
+                    Ok(())
+                };
+
+                write_one(&sr.ez)?;
+                write_one(&sr.hd)?;
+                write_one(&sr.r#in)?;
+                write_one(&sr.at)?;
+                write_one(&sr.legacy)?;
+
+                Ok(())
+            }
+        }
     }
 
     fn len(&self) -> usize {
-        let level_count = self.ez.is_some() as usize
-            + self.hd.is_some() as usize
-            + self.r#in.is_some() as usize
-            + self.at.is_some() as usize
-            + self.legacy.is_some() as usize;
-        VarInt((level_count as u16 * 8) + 2).len() + 1 + 1 + level_count * 8
+        match self {
+            SongRecord::Raw(raw) => raw.len(),
+
+            SongRecord::Normal(sr) => {
+                let level_count = sr.ez.is_some() as usize
+                    + sr.hd.is_some() as usize
+                    + sr.r#in.is_some() as usize
+                    + sr.at.is_some() as usize
+                    + sr.legacy.is_some() as usize;
+
+                let payload = (level_count as u16 * 8) + 2;
+
+                VarInt(payload).len() + 2 + level_count * 8
+            }
+        }
     }
 }
 
@@ -170,7 +239,8 @@ impl Binary for SongRecord {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GameRecord {
     pub version: u8,
-    pub songs: BTreeMap<String, SongRecord>,
+    #[serde(with = "tuple_vec_map")]
+    pub songs: Vec<(String, SongRecord)>,
 }
 
 impl Binary for GameRecord {
@@ -183,14 +253,14 @@ impl Binary for GameRecord {
         let vi = VarInt::read(&data[pos..])?;
         pos += vi.len();
         let song_sum = vi.0 as usize;
-        let mut songs = BTreeMap::new();
+        let mut songs = Vec::with_capacity(song_sum);
         for _ in 0..song_sum {
             let ps = PhiString::read(&data[pos..])?;
             pos += ps.len();
             let name = ps.0;
             let sr = SongRecord::read(&data[pos..])?;
             pos += sr.len();
-            songs.insert(name, sr);
+            songs.push((name, sr));
         }
         Ok(GameRecord { version, songs })
     }

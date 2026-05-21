@@ -1,4 +1,3 @@
-use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
@@ -6,16 +5,33 @@ use serde::{Deserialize, Serialize};
 use crate::Binary;
 use crate::utils::{BinaryError, PhiString, VarInt, get_bit, set_bit};
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type", content = "data", rename_all = "snake_case")]
+pub enum Key {
+    Raw(Vec<u8>),
+    Normal(NormalKey),
+}
+
+impl Default for Key {
+    fn default() -> Self {
+        Self::Raw(Vec::new())
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
-pub struct Key {
+pub struct NormalKey {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub read_collection_piece_num: Option<u8>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unlock_single: Option<bool>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unlock_collection_piece_num: Option<u8>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unlock_illustration: Option<bool>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unlock_avatar: Option<bool>,
 }
@@ -24,105 +40,170 @@ impl Binary for Key {
     type Error = BinaryError;
 
     fn read(data: &[u8]) -> Result<Self, Self::Error> {
-        let mut pos = 0;
-        if data.len() < 2 {
-            return Err(BinaryError::NotEnoughData);
+        if data.is_empty() {
+            return Ok(Key::Raw(data.to_vec()));
         }
+
+        if data.len() < 2 {
+            return Ok(Key::Raw(data.to_vec()));
+        }
+
+        let mut pos = 0;
+
         let length = data[pos];
         pos += 1;
-        let flag_len = (length as usize).saturating_sub(1);
-        let b = data[pos];
+
+        let type_byte = data[pos];
         pos += 1;
-        let exist_read = get_bit(b, 0);
-        let exist_single = get_bit(b, 1);
-        let exist_collection = get_bit(b, 2);
-        let exist_illust = get_bit(b, 3);
-        let exist_avatar = get_bit(b, 4);
-        if data.len() < pos + flag_len {
-            return Err(BinaryError::NotEnoughData);
+
+        // type 位后 3 bit 必须为 0
+        if (type_byte & 0b1110_0000) != 0 {
+            return Ok(Key::Raw(data.to_vec()));
         }
-        let flag = &data[pos..pos + flag_len];
+
+        let exist_read = get_bit(type_byte, 0);
+        let exist_single = get_bit(type_byte, 1);
+        let exist_collection = get_bit(type_byte, 2);
+        let exist_illust = get_bit(type_byte, 3);
+        let exist_avatar = get_bit(type_byte, 4);
+
+        if data.len() < pos + length as usize - 1 {
+            return Ok(Key::Raw(data.to_vec()));
+        }
+
+        let key_data = &data[pos..pos + length as usize - 1];
+
+        let expected_len = exist_read as usize
+            + exist_single as usize
+            + exist_collection as usize
+            + exist_illust as usize
+            + exist_avatar as usize;
+
+        if expected_len != key_data.len() {
+            return Ok(Key::Raw(data.to_vec()));
+        }
 
         let mut idx = 0;
-        let mut key = Key::default();
-        if exist_read && idx < flag.len() {
-            key.read_collection_piece_num = Some(flag[idx]);
+
+        let mut key = NormalKey::default();
+
+        if exist_read {
+            key.read_collection_piece_num = Some(key_data[idx]);
             idx += 1;
         }
-        if exist_single && idx < flag.len() {
-            key.unlock_single = Some(flag[idx] == 1);
+
+        if exist_single {
+            key.unlock_single = Some(key_data[idx] == 1);
             idx += 1;
         }
-        if exist_collection && idx < flag.len() {
-            key.unlock_collection_piece_num = Some(flag[idx]);
+
+        if exist_collection {
+            key.unlock_collection_piece_num = Some(key_data[idx]);
             idx += 1;
         }
-        if exist_illust && idx < flag.len() {
-            key.unlock_illustration = Some(flag[idx] == 1);
+
+        if exist_illust {
+            key.unlock_illustration = Some(key_data[idx] == 1);
             idx += 1;
         }
-        if exist_avatar && idx < flag.len() {
-            key.unlock_avatar = Some(flag[idx] == 1);
+
+        if exist_avatar {
+            key.unlock_avatar = Some(key_data[idx] == 1);
         }
-        Ok(key)
+
+        Ok(Key::Normal(key))
     }
 
     fn write(&self, data: &mut [u8]) -> Result<(), Self::Error> {
-        let mut flag = Vec::new();
-        let mut type_byte = 0u8;
-        if let Some(v) = self.read_collection_piece_num {
-            set_bit(&mut type_byte, 0, true);
-            flag.push(v);
-        }
-        if let Some(v) = self.unlock_single {
-            set_bit(&mut type_byte, 1, true);
-            flag.push(if v { 1 } else { 0 });
-        }
-        if let Some(v) = self.unlock_collection_piece_num {
-            set_bit(&mut type_byte, 2, true);
-            flag.push(v);
-        }
-        if let Some(v) = self.unlock_illustration {
-            set_bit(&mut type_byte, 3, true);
-            flag.push(if v { 1 } else { 0 });
-        }
-        if let Some(v) = self.unlock_avatar {
-            set_bit(&mut type_byte, 4, true);
-            flag.push(if v { 1 } else { 0 });
-        }
+        match self {
+            Key::Raw(raw) => {
+                if data.len() < raw.len() {
+                    return Err(BinaryError::NotEnoughData);
+                }
 
-        let mut pos = 0;
-        if data.is_empty() {
-            return Err(BinaryError::NotEnoughData);
+                data[..raw.len()].copy_from_slice(raw);
+
+                Ok(())
+            }
+
+            Key::Normal(key) => {
+                let mut flag = Vec::new();
+                let mut type_byte = 0u8;
+
+                if let Some(v) = key.read_collection_piece_num {
+                    set_bit(&mut type_byte, 0, true);
+                    flag.push(v);
+                }
+
+                if let Some(v) = key.unlock_single {
+                    set_bit(&mut type_byte, 1, true);
+                    flag.push(if v { 1 } else { 0 });
+                }
+
+                if let Some(v) = key.unlock_collection_piece_num {
+                    set_bit(&mut type_byte, 2, true);
+                    flag.push(v);
+                }
+
+                if let Some(v) = key.unlock_illustration {
+                    set_bit(&mut type_byte, 3, true);
+                    flag.push(if v { 1 } else { 0 });
+                }
+
+                if let Some(v) = key.unlock_avatar {
+                    set_bit(&mut type_byte, 4, true);
+                    flag.push(if v { 1 } else { 0 });
+                }
+
+                let mut pos = 0;
+
+                if data.is_empty() {
+                    return Err(BinaryError::NotEnoughData);
+                }
+
+                data[pos] = flag.len() as u8 + 1;
+                pos += 1;
+
+                if data.len() < pos + 1 {
+                    return Err(BinaryError::NotEnoughData);
+                }
+
+                data[pos] = type_byte;
+                pos += 1;
+
+                if data.len() < pos + flag.len() {
+                    return Err(BinaryError::NotEnoughData);
+                }
+
+                data[pos..pos + flag.len()].copy_from_slice(&flag);
+
+                Ok(())
+            }
         }
-        data[pos] = flag.len() as u8 + 1;
-        pos += 1;
-        if data.len() < pos + 1 {
-            return Err(BinaryError::NotEnoughData);
-        }
-        data[pos] = type_byte;
-        pos += 1;
-        if data.len() < pos + flag.len() {
-            return Err(BinaryError::NotEnoughData);
-        }
-        data[pos..pos + flag.len()].copy_from_slice(&flag);
-        Ok(())
     }
 
     fn len(&self) -> usize {
-        let flag_len = self.read_collection_piece_num.is_some() as usize
-            + self.unlock_single.is_some() as usize
-            + self.unlock_collection_piece_num.is_some() as usize
-            + self.unlock_illustration.is_some() as usize
-            + self.unlock_avatar.is_some() as usize;
-        1 + 1 + flag_len
+        match self {
+            Key::Raw(raw) => raw.len(),
+
+            Key::Normal(key) => {
+                let flag_len = key.read_collection_piece_num.is_some() as usize
+                    + key.unlock_single.is_some() as usize
+                    + key.unlock_collection_piece_num.is_some() as usize
+                    + key.unlock_illustration.is_some() as usize
+                    + key.unlock_avatar.is_some() as usize;
+
+                1 + 1 + flag_len
+            }
+        }
     }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GameKey {
     pub version: u8,
-    pub keys: BTreeMap<String, Key>,
+    #[serde(with = "tuple_vec_map")]
+    pub keys: Vec<(String, Key)>,
     pub lanota_read_keys: [bool; 6],
     pub camellia_read_key: Option<bool>,
     pub side_story4_begin_read_key: Option<bool>,
@@ -139,14 +220,14 @@ impl Binary for GameKey {
         let vi = VarInt::read(&data[pos..])?;
         pos += vi.len();
         let key_sum = vi.0 as usize;
-        let mut keys = BTreeMap::new();
+        let mut keys = Vec::with_capacity(key_sum);
         for _ in 0..key_sum {
             let ps = PhiString::read(&data[pos..])?;
             pos += ps.len();
             let name = ps.0;
             let key = Key::read(&data[pos..])?;
             pos += key.len();
-            keys.insert(name, key);
+            keys.push((name, key));
         }
 
         let mut lanota_read_keys = [false; 6];
